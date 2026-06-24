@@ -15,6 +15,14 @@ import type { AlumniProfile, CommunityPost, SupportRequest, UserRole, ViewKey } 
 
 type ProfileTextField = Exclude<keyof AlumniProfile, "id" | "openToMentor">;
 
+type GlobalSearchResult = {
+  id: string;
+  label: string;
+  detail: string;
+  view: ViewKey;
+  profile?: AlumniProfile;
+};
+
 const profileFields: ProfileTextField[] = [
   "name",
   "cohort",
@@ -28,13 +36,13 @@ const profileFields: ProfileTextField[] = [
   "skills"
 ];
 
-const navItems: Array<{ key: ViewKey; label: string; count: string; icon: string; adminOnly?: boolean }> = [
-  { key: "community", label: "Home", count: "12", icon: "H" },
-  { key: "directory", label: "Directory", count: "248", icon: "D" },
-  { key: "learn", label: "Learn", count: "36", icon: "L" },
-  { key: "support", label: "Support", count: "4", icon: "S" },
-  { key: "profile", label: "Profile", count: "You", icon: "P" },
-  { key: "admin", label: "Admin", count: "Live", icon: "A", adminOnly: true }
+const navItems: Array<{ key: ViewKey; label: string; count: string; icon: ViewKey; adminOnly?: boolean }> = [
+  { key: "community", label: "Home", count: "12", icon: "community" },
+  { key: "directory", label: "Directory", count: "248", icon: "directory" },
+  { key: "learn", label: "Learn", count: "36", icon: "learn" },
+  { key: "support", label: "Support", count: "4", icon: "support" },
+  { key: "profile", label: "Profile", count: "You", icon: "profile" },
+  { key: "admin", label: "Admin", count: "Live", icon: "admin", adminOnly: true }
 ];
 
 export function AluminateApp() {
@@ -50,6 +58,9 @@ export function AluminateApp() {
   const [draftProfile, setDraftProfile] = useState<AlumniProfile | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [postDraft, setPostDraft] = useState("");
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [supportCategory, setSupportCategory] = useState(supportCategories[0]);
   const [supportDetail, setSupportDetail] = useState("");
   const [adminNote, setAdminNote] = useState("Choose an admin tool to preview the next operational workflow.");
@@ -69,6 +80,89 @@ export function AluminateApp() {
     });
   }, [alumni, cohortFilter, mentorOnly, search]);
 
+  const globalResults = useMemo<GlobalSearchResult[]>(() => {
+    const query = globalSearch.trim().toLowerCase();
+    if (!query) return [];
+
+    const results: GlobalSearchResult[] = [];
+    alumni.forEach((person) => {
+      const haystack = [person.name, person.cohort, person.school, person.industry, person.business, person.city, person.skills]
+        .join(" ")
+        .toLowerCase();
+      if (haystack.includes(query)) {
+        results.push({
+          id: `alumni-${person.id}`,
+          label: person.name,
+          detail: `${person.cohort} - ${person.industry} - ${person.business}`,
+          view: "directory",
+          profile: person
+        });
+      }
+    });
+
+    posts.forEach((post) => {
+      const haystack = [post.author, post.category, post.body, post.business].join(" ").toLowerCase();
+      if (haystack.includes(query)) {
+        results.push({
+          id: `post-${post.id}`,
+          label: post.category,
+          detail: `${post.author}: ${post.body}`,
+          view: "community"
+        });
+      }
+    });
+
+    learningModules.forEach((module) => {
+      const haystack = [module.title, module.description].join(" ").toLowerCase();
+      if (haystack.includes(query)) {
+        results.push({
+          id: `module-${module.number}`,
+          label: module.title,
+          detail: module.description,
+          view: "learn"
+        });
+      }
+    });
+
+    requests.forEach((request) => {
+      const haystack = [request.title, request.category, request.status, request.detail].join(" ").toLowerCase();
+      if (haystack.includes(query)) {
+        results.push({
+          id: `request-${request.id}`,
+          label: request.title,
+          detail: `${request.status}: ${request.detail}`,
+          view: "support"
+        });
+      }
+    });
+
+    return results.slice(0, 8);
+  }, [alumni, globalSearch, posts, requests]);
+
+  const alerts = useMemo(
+    () => [
+      {
+        id: "support-alert",
+        title: "Support queue updated",
+        detail: `${requests.filter((request) => request.status !== "Resolved yesterday").length} requests need attention.`,
+        view: "support" as ViewKey
+      },
+      {
+        id: "mentor-alert",
+        title: "Mentor matches ready",
+        detail: `${alumni.filter((person) => person.openToMentor).length} alumni are open to mentoring.`,
+        view: "directory" as ViewKey
+      },
+      {
+        id: "event-alert",
+        title: "Pitch Practice Night",
+        detail: "32 RSVPs for Thursday at Penn State Berks.",
+        view: "community" as ViewKey
+      }
+    ],
+    [alumni, requests]
+  );
+
   function loginAs(nextRole: UserRole) {
     setRole(nextRole);
     setActiveView("community");
@@ -80,6 +174,8 @@ export function AluminateApp() {
       return;
     }
     setActiveView(view);
+    setGlobalSearchOpen(false);
+    setAlertsOpen(false);
   }
 
   function openProfile(person: AlumniProfile) {
@@ -126,6 +222,15 @@ export function AluminateApp() {
     };
     setRequests((records) => [newRequest, ...records]);
     setSupportDetail("");
+  }
+
+  function openSearchResult(result: GlobalSearchResult) {
+    setActiveView(result.view);
+    setGlobalSearchOpen(false);
+    setGlobalSearch("");
+    if (result.profile) {
+      openProfile(result.profile);
+    }
   }
 
   async function handleImport(file: File | undefined) {
@@ -202,17 +307,65 @@ export function AluminateApp() {
           </div>
           <div className="top-actions">
             <span className="session-pill">{role === "admin" ? "Admin" : "Alumni"}</span>
-            <button className="icon-button" aria-label="Search">
-              S
+            <button
+              className={globalSearchOpen ? "icon-button active" : "icon-button"}
+              aria-label="Search"
+              onClick={() => {
+                setGlobalSearchOpen((open) => !open);
+                setAlertsOpen(false);
+              }}
+            >
+              Search
             </button>
-            <button className="icon-button" aria-label="Notifications">
-              N
+            <button
+              className={alertsOpen ? "icon-button active" : "icon-button"}
+              aria-label="Notifications"
+              onClick={() => {
+                setAlertsOpen((open) => !open);
+                setGlobalSearchOpen(false);
+              }}
+            >
+              Alerts
             </button>
             <button className="primary-button" onClick={() => setComposerOpen(true)}>
               <span className="button-icon">+</span>
               New Post
             </button>
           </div>
+          {globalSearchOpen && (
+            <div className="top-popover search-popover">
+              <input
+                aria-label="Search Aluminate"
+                autoFocus
+                placeholder="Search people, posts, support, modules..."
+                value={globalSearch}
+                onChange={(event) => setGlobalSearch(event.target.value)}
+              />
+              <div className="popover-list">
+                {globalResults.map((result) => (
+                  <button key={result.id} onClick={() => openSearchResult(result)}>
+                    <strong>{result.label}</strong>
+                    <span>{result.detail}</span>
+                  </button>
+                ))}
+                {globalSearch.trim() && globalResults.length === 0 && <p>No matches yet.</p>}
+                {!globalSearch.trim() && <p>Try a name, cohort, business, support topic, or module.</p>}
+              </div>
+            </div>
+          )}
+          {alertsOpen && (
+            <div className="top-popover alerts-popover">
+              <p className="section-label">Notifications</p>
+              <div className="popover-list">
+                {alerts.map((alert) => (
+                  <button key={alert.id} onClick={() => changeView(alert.view)}>
+                    <strong>{alert.title}</strong>
+                    <span>{alert.detail}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </header>
 
         {activeView === "community" && (
@@ -274,7 +427,9 @@ export function AluminateApp() {
               onClick={() => changeView(item.key)}
               aria-label={item.label}
             >
-              <span className="mobile-icon">{item.icon}</span>
+              <span className="mobile-icon">
+                <NavIcon icon={item.icon} />
+              </span>
               <span>{item.label}</span>
             </button>
           );
@@ -313,11 +468,83 @@ function NavButton({
   return (
     <button className={active ? "nav-item active" : "nav-item"} onClick={onClick}>
       <span>
-        <span className="nav-icon">{item.icon}</span>
+        <span className="nav-icon">
+          <NavIcon icon={item.icon} />
+        </span>
         {item.label}
       </span>
       <strong>{item.count}</strong>
     </button>
+  );
+}
+
+function NavIcon({ icon }: { icon: ViewKey }) {
+  const common = {
+    width: "18",
+    height: "18",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true
+  };
+
+  if (icon === "community") {
+    return (
+      <svg {...common}>
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5 10v10h14V10" />
+        <path d="M9 20v-6h6v6" />
+      </svg>
+    );
+  }
+
+  if (icon === "directory") {
+    return (
+      <svg {...common}>
+        <path d="M8 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0Z" />
+        <path d="M4 21a8 8 0 0 1 16 0" />
+      </svg>
+    );
+  }
+
+  if (icon === "learn") {
+    return (
+      <svg {...common}>
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
+        <path d="M8 7h8" />
+        <path d="M8 11h6" />
+      </svg>
+    );
+  }
+
+  if (icon === "support") {
+    return (
+      <svg {...common}>
+        <path d="M12 21s8-4.5 8-11a5 5 0 0 0-8-4 5 5 0 0 0-8 4c0 6.5 8 11 8 11Z" />
+      </svg>
+    );
+  }
+
+  if (icon === "profile") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M5 21a7 7 0 0 1 14 0" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+      <path d="M8 3v18" />
+      <path d="M16 3v18" />
+    </svg>
   );
 }
 

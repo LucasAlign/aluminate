@@ -292,11 +292,16 @@ button {
   display: grid;
   min-width: 44px;
   place-items: center;
-  padding: 0 13px;
+  padding: 0 12px;
   color: var(--ink);
   font-size: 13px;
   font-weight: 850;
   background: rgba(255, 255, 255, 0.7);
+}
+
+.icon-button svg {
+  width: 19px;
+  height: 19px;
 }
 
 .icon-button.active {
@@ -370,6 +375,33 @@ button {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.settings-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.settings-list label {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0 12px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 750;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.settings-list input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
 }
 
 .secondary-button {
@@ -485,6 +517,43 @@ button {
   padding: 0 18px;
 }
 
+.file-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-button input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.attachment-preview-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.draft-attachment {
+  position: relative;
+}
+
+.draft-attachment > button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: 28px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 9px;
+  color: white;
+  font-size: 11px;
+  font-weight: 850;
+  background: rgba(17, 24, 39, 0.72);
+}
+
 .post-head {
   display: flex;
   gap: 12px;
@@ -531,28 +600,65 @@ button {
   background: var(--violet);
 }
 
-.image-strip {
+.post-attachments {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 0.8fr;
   gap: 10px;
   margin: 18px 0;
 }
 
-.color-tile {
-  min-height: 118px;
+.post-attachments.media-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.image-attachment {
+  display: grid;
+  min-height: 132px;
+  overflow: hidden;
+  place-items: end start;
   border-radius: 20px;
+  padding: 12px;
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.44), transparent 25%),
+    linear-gradient(135deg, var(--blue), var(--green), var(--coral));
 }
 
-.red {
-  background: linear-gradient(135deg, var(--coral), #ffb199);
+.image-attachment:nth-child(2n) {
+  background:
+    radial-gradient(circle at 75% 18%, rgba(255, 255, 255, 0.38), transparent 24%),
+    linear-gradient(135deg, var(--violet), var(--blue), var(--gold));
 }
 
-.blue {
-  background: linear-gradient(135deg, var(--blue), #92c7ff);
+.image-attachment img {
+  width: 100%;
+  height: 100%;
+  min-height: 132px;
+  object-fit: cover;
+  border-radius: inherit;
+  margin: -12px;
 }
 
-.gold {
-  background: linear-gradient(135deg, var(--gold), #fff0ac);
+.file-attachment {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 0 13px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.file-attachment span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .post-actions,
@@ -1196,8 +1302,8 @@ button {
     bottom: 12px;
     left: 12px;
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
     border: 1px solid rgba(17, 24, 39, 0.14);
     border-radius: 24px;
     padding: 7px;
@@ -1210,11 +1316,16 @@ button {
   }
 
   .mobile-nav button {
-    display: grid;
+    display: flex;
     min-height: 48px;
-    place-items: center;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 2px;
     border: 0;
-    border-radius: 17px;
+    border-radius: 18px;
+    padding: 5px 0;
     color: #4b5563;
     font-size: 11px;
     font-weight: 850;
@@ -1222,9 +1333,11 @@ button {
   }
 
   .mobile-nav .mobile-icon {
-    width: 24px;
-    height: 22px;
-    border-radius: 0;
+    display: grid;
+    width: 34px;
+    height: 30px;
+    place-items: center;
+    border-radius: 15px;
     background: transparent;
   }
 
@@ -1234,10 +1347,15 @@ button {
   }
 
   .mobile-nav button.active {
+    color: var(--blue);
+    background: transparent;
+  }
+
+  .mobile-nav button.active .mobile-icon {
     color: white;
     background: linear-gradient(135deg, var(--blue), var(--violet));
     box-shadow:
-      0 13px 28px rgba(23, 119, 255, 0.28),
+      0 12px 24px rgba(23, 119, 255, 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.24);
   }
 
@@ -1298,7 +1416,4 @@ button {
     width: 100%;
   }
 
-  .image-strip {
-    grid-template-columns: 1fr;
-  }
 }

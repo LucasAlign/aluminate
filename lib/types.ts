@@ -27,8 +27,17 @@ export type CommunityPost = {
   tone: "coral" | "green" | "blue" | "violet";
   body: string;
   note?: string;
+  attachments?: PostAttachment[];
   reactions: number;
   comments: number;
+};
+
+export type PostAttachment = {
+  id: string;
+  name: string;
+  kind: "image" | "file";
+  url?: string;
+  label?: string;
 };
 
 export type SupportRequest = {

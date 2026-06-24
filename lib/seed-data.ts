@@ -101,6 +101,11 @@ export const communityPosts: CommunityPost[] = [
     category: "Startup Win",
     tone: "coral",
     body: "First weekend pop-up is booked. I used the pricing worksheet from EEA and finally feel confident about margins.",
+    attachments: [
+      { id: "ari-booth", name: "Pop-up booth mockup", kind: "image", label: "Booth setup" },
+      { id: "ari-products", name: "First product rack", kind: "image", label: "Product rack" },
+      { id: "ari-brand", name: "Brand color board", kind: "image", label: "Color board" }
+    ],
     reactions: 18,
     comments: 4
   },
@@ -115,8 +120,54 @@ export const communityPosts: CommunityPost[] = [
     body:
       "Does anyone have experience testing a menu before renting kitchen space? Looking for a mentor who knows food licensing basics.",
     note: "Gary from the sponsor network can help. Tap Support to request an intro.",
+    attachments: [{ id: "jada-menu-pdf", name: "draft-menu-pricing.pdf", kind: "file" }],
     reactions: 9,
     comments: 7
+  },
+  {
+    id: "noah-hiring",
+    author: "Noah Patel",
+    cohort: "2022 alumni",
+    business: "lawn care service",
+    timeAgo: "2 hr ago",
+    category: "Hiring",
+    tone: "green",
+    body:
+      "I am bringing on two weekend helpers for summer routes. Sharing the interview questions and training checklist in case anyone else is hiring.",
+    attachments: [{ id: "noah-checklist", name: "summer-helper-training-checklist.docx", kind: "file" }],
+    reactions: 24,
+    comments: 6
+  },
+  {
+    id: "sofia-before-after",
+    author: "Sofia Martinez",
+    cohort: "2024 alumni",
+    business: "mobile nail art studio",
+    timeAgo: "Yesterday",
+    category: "Portfolio",
+    tone: "blue",
+    body:
+      "Tested a small event package for prom season. The bundle sold better when I showed three simple examples instead of a giant menu.",
+    attachments: [
+      { id: "sofia-set-a", name: "Event package sample", kind: "image", label: "Sample A" },
+      { id: "sofia-set-b", name: "Client inspiration board", kind: "image", label: "Inspiration" }
+    ],
+    reactions: 31,
+    comments: 9
+  },
+  {
+    id: "maya-resource",
+    author: "Maya Chen",
+    cohort: "2023 alumni",
+    business: "digital media",
+    timeAgo: "Yesterday",
+    category: "Resource",
+    tone: "violet",
+    body:
+      "I cleaned up the one-page website checklist I use with first-time founders. It covers homepage sections, testimonials, photos, and launch day QA.",
+    attachments: [{ id: "maya-checklist", name: "student-founder-website-checklist.pdf", kind: "file" }],
+    reactions: 42,
+    comments: 12
   }
 ];
 

@@ -11,7 +11,7 @@ import {
   supportRequests,
   viewTitles
 } from "@/lib/seed-data";
-import type { AlumniProfile, CommunityPost, SupportRequest, UserRole, ViewKey } from "@/lib/types";
+import type { AlumniProfile, CommunityPost, PostAttachment, SupportRequest, UserRole, ViewKey } from "@/lib/types";
 
 type ProfileTextField = Exclude<keyof AlumniProfile, "id" | "openToMentor">;
 
@@ -58,9 +58,11 @@ export function AluminateApp() {
   const [draftProfile, setDraftProfile] = useState<AlumniProfile | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [postDraft, setPostDraft] = useState("");
+  const [postAttachments, setPostAttachments] = useState<PostAttachment[]>([]);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [supportCategory, setSupportCategory] = useState(supportCategories[0]);
   const [supportDetail, setSupportDetail] = useState("");
   const [adminNote, setAdminNote] = useState("Choose an admin tool to preview the next operational workflow.");
@@ -101,7 +103,9 @@ export function AluminateApp() {
     });
 
     posts.forEach((post) => {
-      const haystack = [post.author, post.category, post.body, post.business].join(" ").toLowerCase();
+      const haystack = [post.author, post.category, post.body, post.business, ...(post.attachments ?? []).map((item) => item.name)]
+        .join(" ")
+        .toLowerCase();
       if (haystack.includes(query)) {
         results.push({
           id: `post-${post.id}`,
@@ -176,6 +180,7 @@ export function AluminateApp() {
     setActiveView(view);
     setGlobalSearchOpen(false);
     setAlertsOpen(false);
+    setSettingsOpen(false);
   }
 
   function openProfile(person: AlumniProfile) {
@@ -192,7 +197,7 @@ export function AluminateApp() {
 
   function createPost() {
     const body = postDraft.trim();
-    if (!body) return;
+    if (!body && postAttachments.length === 0) return;
     const newPost: CommunityPost = {
       id: `post-${Date.now()}`,
       author: "Maya Chen",
@@ -201,13 +206,30 @@ export function AluminateApp() {
       timeAgo: "Just now",
       category: body.endsWith("?") ? "Community Ask" : "Update",
       tone: body.endsWith("?") ? "violet" : "green",
-      body,
+      body: body || "Shared new files with the community.",
+      attachments: postAttachments,
       reactions: 0,
       comments: 0
     };
     setPosts((records) => [newPost, ...records]);
     setPostDraft("");
+    setPostAttachments([]);
     setComposerOpen(false);
+  }
+
+  function addPostFiles(fileList: FileList | null) {
+    if (!fileList) return;
+    const nextFiles = Array.from(fileList).map<PostAttachment>((file, index) => ({
+      id: `attachment-${Date.now()}-${index}`,
+      name: file.name,
+      kind: file.type.startsWith("image/") ? "image" : "file",
+      url: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined
+    }));
+    setPostAttachments((records) => [...records, ...nextFiles]);
+  }
+
+  function removePostAttachment(id: string) {
+    setPostAttachments((records) => records.filter((attachment) => attachment.id !== id));
   }
 
   function createSupportRequest() {
@@ -227,6 +249,8 @@ export function AluminateApp() {
   function openSearchResult(result: GlobalSearchResult) {
     setActiveView(result.view);
     setGlobalSearchOpen(false);
+    setAlertsOpen(false);
+    setSettingsOpen(false);
     setGlobalSearch("");
     if (result.profile) {
       openProfile(result.profile);
@@ -325,7 +349,18 @@ export function AluminateApp() {
                 setGlobalSearchOpen(false);
               }}
             >
-              Alerts
+              <UtilityIcon icon="bell" />
+            </button>
+            <button
+              className={settingsOpen ? "icon-button active" : "icon-button"}
+              aria-label="Settings"
+              onClick={() => {
+                setSettingsOpen((open) => !open);
+                setAlertsOpen(false);
+                setGlobalSearchOpen(false);
+              }}
+            >
+              <UtilityIcon icon="settings" />
             </button>
             <button className="primary-button" onClick={() => setComposerOpen(true)}>
               <span className="button-icon">+</span>
@@ -366,6 +401,25 @@ export function AluminateApp() {
               </div>
             </div>
           )}
+          {settingsOpen && (
+            <div className="top-popover settings-popover">
+              <p className="section-label">Settings</p>
+              <div className="settings-list">
+                <label>
+                  <span>Community digest</span>
+                  <input type="checkbox" defaultChecked />
+                </label>
+                <label>
+                  <span>Mentor match alerts</span>
+                  <input type="checkbox" defaultChecked />
+                </label>
+                <label>
+                  <span>Compact directory rows</span>
+                  <input type="checkbox" />
+                </label>
+              </div>
+            </div>
+          )}
         </header>
 
         {activeView === "community" && (
@@ -373,12 +427,16 @@ export function AluminateApp() {
             posts={posts}
             composerOpen={composerOpen}
             postDraft={postDraft}
+            attachments={postAttachments}
             onOpenComposer={() => setComposerOpen(true)}
             onPostDraft={setPostDraft}
+            onAddFiles={addPostFiles}
+            onRemoveAttachment={removePostAttachment}
             onCreatePost={createPost}
             onCancelPost={() => {
               setComposerOpen(false);
               setPostDraft("");
+              setPostAttachments([]);
             }}
           />
         )}
@@ -548,20 +606,64 @@ function NavIcon({ icon }: { icon: ViewKey }) {
   );
 }
 
+function UtilityIcon({ icon }: { icon: "bell" | "settings" | "paperclip" }) {
+  const common = {
+    width: "18",
+    height: "18",
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true
+  };
+
+  if (icon === "bell") {
+    return (
+      <svg {...common}>
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+        <path d="M10 21h4" />
+      </svg>
+    );
+  }
+
+  if (icon === "settings") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path d="m21.4 11.6-8.5 8.5a6 6 0 0 1-8.5-8.5l8.9-8.9a4 4 0 0 1 5.7 5.7l-8.9 8.9a2 2 0 0 1-2.8-2.8l8.5-8.5" />
+    </svg>
+  );
+}
+
 function CommunityView({
   posts,
   composerOpen,
   postDraft,
+  attachments,
   onOpenComposer,
   onPostDraft,
+  onAddFiles,
+  onRemoveAttachment,
   onCreatePost,
   onCancelPost
 }: {
   posts: CommunityPost[];
   composerOpen: boolean;
   postDraft: string;
+  attachments: PostAttachment[];
   onOpenComposer: () => void;
   onPostDraft: (value: string) => void;
+  onAddFiles: (files: FileList | null) => void;
+  onRemoveAttachment: (id: string) => void;
   onCreatePost: () => void;
   onCancelPost: () => void;
 }) {
@@ -579,7 +681,32 @@ function CommunityView({
                 value={postDraft}
                 onChange={(event) => onPostDraft(event.target.value)}
               />
+              {attachments.length > 0 && (
+                <div className="attachment-preview-list">
+                  {attachments.map((attachment) => (
+                    <div className="draft-attachment" key={attachment.id}>
+                      <AttachmentPreview attachment={attachment} />
+                      <button onClick={() => onRemoveAttachment(attachment.id)} aria-label={`Remove ${attachment.name}`}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="composer-actions">
+                <label className="secondary-button file-button">
+                  <UtilityIcon icon="paperclip" />
+                  Add file
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv"
+                    onChange={(event) => {
+                      onAddFiles(event.target.files);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
                 <button className="secondary-button" onClick={onCancelPost}>
                   Cancel
                 </button>
@@ -608,11 +735,11 @@ function CommunityView({
               <span className={`pill ${post.tone === "violet" ? "violet" : ""}`}>{post.category}</span>
             </div>
             <p className="post-copy">{post.body}</p>
-            {index === 1 && (
-              <div className="image-strip">
-                <div className="color-tile red" />
-                <div className="color-tile blue" />
-                <div className="color-tile gold" />
+            {post.attachments && post.attachments.length > 0 && (
+              <div className={post.attachments.some((attachment) => attachment.kind === "image") ? "post-attachments media-grid" : "post-attachments"}>
+                {post.attachments.map((attachment) => (
+                  <AttachmentPreview attachment={attachment} key={attachment.id} />
+                ))}
               </div>
             )}
             {post.note && (
@@ -656,6 +783,23 @@ function CommunityView({
         </section>
       </aside>
     </section>
+  );
+}
+
+function AttachmentPreview({ attachment }: { attachment: PostAttachment }) {
+  if (attachment.kind === "image") {
+    return (
+      <div className="image-attachment">
+        {attachment.url ? <img src={attachment.url} alt={attachment.name} /> : <span>{attachment.label ?? attachment.name}</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="file-attachment">
+      <UtilityIcon icon="paperclip" />
+      <span>{attachment.name}</span>
+    </div>
   );
 }
 

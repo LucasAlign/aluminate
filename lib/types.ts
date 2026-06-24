@@ -17,9 +17,26 @@ export type AlumniProfile = {
   openToMentor: boolean;
 };
 
+export type CommunityPost = {
+  id: string;
+  author: string;
+  cohort: string;
+  business: string;
+  timeAgo: string;
+  category: string;
+  tone: "coral" | "green" | "blue" | "violet";
+  body: string;
+  note?: string;
+  reactions: number;
+  comments: number;
+};
+
 export type SupportRequest = {
+  id: string;
   title: string;
+  category: string;
   status: string;
+  detail: string;
 };
 
 export type Module = {

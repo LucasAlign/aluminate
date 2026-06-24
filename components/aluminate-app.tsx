@@ -2,8 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { parseRosterFile } from "@/lib/importers";
-import { alumniSeed, initials, learningModules, supportRequests, viewTitles } from "@/lib/seed-data";
-import type { AlumniProfile, UserRole, ViewKey } from "@/lib/types";
+import {
+  alumniSeed,
+  communityPosts,
+  initials,
+  learningModules,
+  supportCategories,
+  supportRequests,
+  viewTitles
+} from "@/lib/seed-data";
+import type { AlumniProfile, CommunityPost, SupportRequest, UserRole, ViewKey } from "@/lib/types";
 
 type ProfileTextField = Exclude<keyof AlumniProfile, "id" | "openToMentor">;
 
@@ -33,19 +41,33 @@ export function AluminateApp() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [activeView, setActiveView] = useState<ViewKey>("community");
   const [alumni, setAlumni] = useState(alumniSeed);
+  const [posts, setPosts] = useState(communityPosts);
+  const [requests, setRequests] = useState(supportRequests);
   const [search, setSearch] = useState("");
+  const [cohortFilter, setCohortFilter] = useState("all");
+  const [mentorOnly, setMentorOnly] = useState(false);
   const [activeProfile, setActiveProfile] = useState<AlumniProfile | null>(null);
   const [draftProfile, setDraftProfile] = useState<AlumniProfile | null>(null);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [postDraft, setPostDraft] = useState("");
+  const [supportCategory, setSupportCategory] = useState(supportCategories[0]);
+  const [supportDetail, setSupportDetail] = useState("");
+  const [adminNote, setAdminNote] = useState("Choose an admin tool to preview the next operational workflow.");
   const [importNote, setImportNote] = useState(
     "Upload CSV or Excel columns like name, cohort, school, industry, email, phone, business, status, city, skills."
   );
 
   const visibleNav = navItems.filter((item) => !item.adminOnly || role === "admin");
+  const cohorts = useMemo(() => Array.from(new Set(alumni.map((person) => person.cohort))).sort().reverse(), [alumni]);
   const filteredAlumni = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return alumni;
-    return alumni.filter((person) => Object.values(person).join(" ").toLowerCase().includes(query));
-  }, [alumni, search]);
+    return alumni.filter((person) => {
+      const matchesQuery = !query || Object.values(person).join(" ").toLowerCase().includes(query);
+      const matchesCohort = cohortFilter === "all" || person.cohort === cohortFilter;
+      const matchesMentor = !mentorOnly || person.openToMentor;
+      return matchesQuery && matchesCohort && matchesMentor;
+    });
+  }, [alumni, cohortFilter, mentorOnly, search]);
 
   function loginAs(nextRole: UserRole) {
     setRole(nextRole);
@@ -70,6 +92,40 @@ export function AluminateApp() {
     setAlumni((records) => records.map((person) => (person.id === draftProfile.id ? draftProfile : person)));
     setActiveProfile(null);
     setDraftProfile(null);
+  }
+
+  function createPost() {
+    const body = postDraft.trim();
+    if (!body) return;
+    const newPost: CommunityPost = {
+      id: `post-${Date.now()}`,
+      author: "Maya Chen",
+      cohort: "2023 alumni",
+      business: "digital media",
+      timeAgo: "Just now",
+      category: body.endsWith("?") ? "Community Ask" : "Update",
+      tone: body.endsWith("?") ? "violet" : "green",
+      body,
+      reactions: 0,
+      comments: 0
+    };
+    setPosts((records) => [newPost, ...records]);
+    setPostDraft("");
+    setComposerOpen(false);
+  }
+
+  function createSupportRequest() {
+    const detail = supportDetail.trim();
+    if (!detail) return;
+    const newRequest: SupportRequest = {
+      id: `request-${Date.now()}`,
+      title: supportCategory,
+      category: supportCategory,
+      status: "New request",
+      detail
+    };
+    setRequests((records) => [newRequest, ...records]);
+    setSupportDetail("");
   }
 
   async function handleImport(file: File | undefined) {
@@ -152,22 +208,60 @@ export function AluminateApp() {
             <button className="icon-button" aria-label="Notifications">
               N
             </button>
-            <button className="primary-button">
+            <button className="primary-button" onClick={() => setComposerOpen(true)}>
               <span className="button-icon">+</span>
               New Post
             </button>
           </div>
         </header>
 
-        {activeView === "community" && <CommunityView />}
+        {activeView === "community" && (
+          <CommunityView
+            posts={posts}
+            composerOpen={composerOpen}
+            postDraft={postDraft}
+            onOpenComposer={() => setComposerOpen(true)}
+            onPostDraft={setPostDraft}
+            onCreatePost={createPost}
+            onCancelPost={() => {
+              setComposerOpen(false);
+              setPostDraft("");
+            }}
+          />
+        )}
         {activeView === "directory" && (
-          <DirectoryView alumni={filteredAlumni} search={search} onSearch={setSearch} onOpenProfile={openProfile} />
+          <DirectoryView
+            alumni={filteredAlumni}
+            cohorts={cohorts}
+            cohortFilter={cohortFilter}
+            mentorOnly={mentorOnly}
+            search={search}
+            onCohortFilter={setCohortFilter}
+            onMentorOnly={setMentorOnly}
+            onSearch={setSearch}
+            onOpenProfile={openProfile}
+          />
         )}
         {activeView === "learn" && <LearnView />}
-        {activeView === "support" && <SupportView />}
+        {activeView === "support" && (
+          <SupportView
+            requests={requests}
+            selectedCategory={supportCategory}
+            detail={supportDetail}
+            onCategory={setSupportCategory}
+            onDetail={setSupportDetail}
+            onCreateRequest={createSupportRequest}
+          />
+        )}
         {activeView === "profile" && <ProfileView profile={alumni[0]} onEdit={openProfile} />}
         {activeView === "admin" && role === "admin" && (
-          <AdminView alumniCount={alumni.length} importNote={importNote} onImport={handleImport} />
+          <AdminView
+            alumniCount={alumni.length}
+            importNote={importNote}
+            adminNote={adminNote}
+            onAdminAction={setAdminNote}
+            onImport={handleImport}
+          />
         )}
       </main>
 
@@ -227,62 +321,86 @@ function NavButton({
   );
 }
 
-function CommunityView() {
+function CommunityView({
+  posts,
+  composerOpen,
+  postDraft,
+  onOpenComposer,
+  onPostDraft,
+  onCreatePost,
+  onCancelPost
+}: {
+  posts: CommunityPost[];
+  composerOpen: boolean;
+  postDraft: string;
+  onOpenComposer: () => void;
+  onPostDraft: (value: string) => void;
+  onCreatePost: () => void;
+  onCancelPost: () => void;
+}) {
   return (
     <section className="content-grid">
       <div className="feed-column">
         <div className="glass-panel composer">
           <div className="avatar">MC</div>
-          <button className="composer-input">Share a win, ask for help, or post an opportunity...</button>
+          {composerOpen ? (
+            <div className="composer-form">
+              <textarea
+                aria-label="New community post"
+                autoFocus
+                placeholder="Share a win, ask for help, or post an opportunity..."
+                value={postDraft}
+                onChange={(event) => onPostDraft(event.target.value)}
+              />
+              <div className="composer-actions">
+                <button className="secondary-button" onClick={onCancelPost}>
+                  Cancel
+                </button>
+                <button className="primary-button" onClick={onCreatePost}>
+                  Post
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className="composer-input" onClick={onOpenComposer}>
+              Share a win, ask for help, or post an opportunity...
+            </button>
+          )}
         </div>
 
-        <article className="glass-panel post-card">
-          <div className="post-head">
-            <div className="avatar coral">AR</div>
-            <div>
-              <h3>Ari Rivera</h3>
-              <p>2024 alumni - apparel startup - 18 min ago</p>
+        {posts.map((post, index) => (
+          <article className="glass-panel post-card" key={post.id}>
+            <div className="post-head">
+              <div className={`avatar ${post.tone}`}>{initials(post.author)}</div>
+              <div>
+                <h3>{post.author}</h3>
+                <p>
+                  {post.cohort} - {post.business} - {post.timeAgo}
+                </p>
+              </div>
+              <span className={`pill ${post.tone === "violet" ? "violet" : ""}`}>{post.category}</span>
             </div>
-            <span className="pill">Startup Win</span>
-          </div>
-          <p className="post-copy">
-            First weekend pop-up is booked. I used the pricing worksheet from EEA and finally feel confident about margins.
-          </p>
-          <div className="image-strip">
-            <div className="color-tile red" />
-            <div className="color-tile blue" />
-            <div className="color-tile gold" />
-          </div>
-          <div className="post-actions">
-            <button>Celebrate</button>
-            <button>Comment</button>
-            <button>Save</button>
-          </div>
-        </article>
-
-        <article className="glass-panel post-card">
-          <div className="post-head">
-            <div className="avatar green">JL</div>
-            <div>
-              <h3>Jada Lee</h3>
-              <p>2025 alumni - food concept - 42 min ago</p>
+            <p className="post-copy">{post.body}</p>
+            {index === 1 && (
+              <div className="image-strip">
+                <div className="color-tile red" />
+                <div className="color-tile blue" />
+                <div className="color-tile gold" />
+              </div>
+            )}
+            {post.note && (
+              <div className="reply-box">
+                <strong>Coach note</strong>
+                <span>{post.note}</span>
+              </div>
+            )}
+            <div className="post-actions">
+              <button>Celebrate {post.reactions > 0 ? post.reactions : ""}</button>
+              <button>Comment {post.comments > 0 ? post.comments : ""}</button>
+              <button>{post.category.includes("Ask") ? "Request Intro" : "Save"}</button>
             </div>
-            <span className="pill violet">Mentor Ask</span>
-          </div>
-          <p className="post-copy">
-            Does anyone have experience testing a menu before renting kitchen space? Looking for a mentor who knows food
-            licensing basics.
-          </p>
-          <div className="reply-box">
-            <strong>Coach note</strong>
-            <span>Gary from the sponsor network can help. Tap Support to request an intro.</span>
-          </div>
-          <div className="post-actions">
-            <button>Helpful</button>
-            <button>Comment</button>
-            <button>Request Intro</button>
-          </div>
-        </article>
+          </article>
+        ))}
       </div>
 
       <aside className="right-rail">
@@ -316,12 +434,22 @@ function CommunityView() {
 
 function DirectoryView({
   alumni,
+  cohorts,
+  cohortFilter,
+  mentorOnly,
   search,
+  onCohortFilter,
+  onMentorOnly,
   onSearch,
   onOpenProfile
 }: {
   alumni: AlumniProfile[];
+  cohorts: string[];
+  cohortFilter: string;
+  mentorOnly: boolean;
   search: string;
+  onCohortFilter: (value: string) => void;
+  onMentorOnly: (value: boolean) => void;
   onSearch: (value: string) => void;
   onOpenProfile: (person: AlumniProfile) => void;
 }) {
@@ -334,8 +462,22 @@ function DirectoryView({
           value={search}
           onChange={(event) => onSearch(event.target.value)}
         />
-        <button>All cohorts</button>
-        <button>Open to mentor</button>
+        <select
+          aria-label="Filter by cohort"
+          value={cohortFilter}
+          onChange={(event) => onCohortFilter(event.target.value)}
+        >
+          <option value="all">All cohorts</option>
+          {cohorts.map((cohort) => (
+            <option value={cohort} key={cohort}>
+              {cohort}
+            </option>
+          ))}
+        </select>
+        <label className={mentorOnly ? "toggle-chip active" : "toggle-chip"}>
+          <input type="checkbox" checked={mentorOnly} onChange={(event) => onMentorOnly(event.target.checked)} />
+          Open to mentor
+        </label>
       </div>
       <div className="glass-panel directory-list">
         <div className="directory-header">
@@ -366,6 +508,7 @@ function DirectoryView({
             <span className="status-chip">{person.status}</span>
           </button>
         ))}
+        {alumni.length === 0 && <div className="empty-state">No alumni match these filters yet.</div>}
       </div>
     </section>
   );
@@ -395,25 +538,52 @@ function LearnView() {
   );
 }
 
-function SupportView() {
+function SupportView({
+  requests,
+  selectedCategory,
+  detail,
+  onCategory,
+  onDetail,
+  onCreateRequest
+}: {
+  requests: SupportRequest[];
+  selectedCategory: string;
+  detail: string;
+  onCategory: (value: string) => void;
+  onDetail: (value: string) => void;
+  onCreateRequest: () => void;
+}) {
   return (
     <section className="support-layout">
       <section className="glass-panel support-card">
         <p className="section-label">Request support</p>
         <h3>What do you need help with?</h3>
         <div className="support-buttons">
-          {["Business idea feedback", "Pitch review", "Marketing help", "Funding guidance", "Mentor intro", "Website or brand"].map(
-            (item) => (
-              <button key={item}>{item}</button>
-            )
-          )}
+          {supportCategories.map((item) => (
+            <button className={item === selectedCategory ? "active" : ""} key={item} onClick={() => onCategory(item)}>
+              {item}
+            </button>
+          ))}
         </div>
+        <textarea
+          className="support-detail"
+          aria-label="Support request detail"
+          placeholder="Add the context EEA staff should know..."
+          value={detail}
+          onChange={(event) => onDetail(event.target.value)}
+        />
+        <button className="primary-button request-submit" onClick={onCreateRequest}>
+          Submit Request
+        </button>
       </section>
       <section className="glass-panel support-card">
         <p className="section-label">Open requests</p>
-        {supportRequests.map((request) => (
-          <div className="request-row" key={request.title}>
-            <strong>{request.title}</strong>
+        {requests.map((request) => (
+          <div className="request-row" key={request.id}>
+            <div>
+              <strong>{request.title}</strong>
+              <small>{request.detail}</small>
+            </div>
             <span>{request.status}</span>
           </div>
         ))}
@@ -448,10 +618,14 @@ function ProfileView({ profile, onEdit }: { profile: AlumniProfile; onEdit: (per
 function AdminView({
   alumniCount,
   importNote,
+  adminNote,
+  onAdminAction,
   onImport
 }: {
   alumniCount: number;
   importNote: string;
+  adminNote: string;
+  onAdminAction: (note: string) => void;
   onImport: (file: File | undefined) => void;
 }) {
   return (
@@ -521,19 +695,20 @@ function AdminView({
         <section className="glass-panel report-card">
           <p className="section-label">Admin tools</p>
           {[
-            ["Approve new alumni accounts", "A"],
-            ["Review imported alumni data", "R"],
-            ["Export sponsor impact report", "E"],
-            ["Manage resources and events", "M"],
-            ["Review flagged content", "F"]
-          ].map(([label, icon]) => {
+            ["Approve new alumni accounts", "A", "Account queue opened: 6 pending alumni need verification."],
+            ["Review imported alumni data", "R", "Roster review opened: validate columns before writing to Firebase."],
+            ["Export sponsor impact report", "E", "Impact report queued with engagement, launches, and support outcomes."],
+            ["Manage resources and events", "M", "Resource manager opened: modules and events will be editable in Phase 2."],
+            ["Review flagged content", "F", "Moderation queue opened: no high-priority flags in this seed demo."]
+          ].map(([label, icon, note]) => {
             return (
-              <button className="admin-action" key={label as string}>
+              <button className="admin-action" key={label as string} onClick={() => onAdminAction(note as string)}>
                 <span className="nav-icon">{icon as string}</span>
                 {label as string}
               </button>
             );
           })}
+          <div className="import-note admin-tool-note">{adminNote}</div>
         </section>
       </div>
     </section>

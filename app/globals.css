@@ -31,6 +31,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -379,6 +380,36 @@ button {
   background: rgba(255, 255, 255, 0.54);
 }
 
+.composer-form {
+  display: grid;
+  flex: 1;
+  gap: 10px;
+}
+
+.composer-form textarea {
+  width: 100%;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.6);
+  outline: none;
+  resize: vertical;
+}
+
+.composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.composer-actions .secondary-button,
+.composer-actions .primary-button {
+  width: auto;
+  padding: 0 18px;
+}
+
 .post-head {
   display: flex;
   gap: 12px;
@@ -510,7 +541,8 @@ button {
   padding: 12px;
 }
 
-.toolbar input {
+.toolbar input,
+.toolbar select {
   flex: 1;
   min-height: 38px;
   border: 1px solid var(--line);
@@ -518,6 +550,36 @@ button {
   padding: 0 12px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.54);
+}
+
+.toolbar select {
+  flex: 0 0 152px;
+  color: var(--ink);
+}
+
+.toggle-chip {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--ink);
+  font-weight: 750;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.toggle-chip input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--blue);
+}
+
+.toggle-chip.active {
+  color: white;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--blue), var(--green));
 }
 
 .directory-list {
@@ -558,6 +620,12 @@ button {
 
 .alumni-row:hover {
   background: rgba(255, 255, 255, 0.48);
+}
+
+.empty-state {
+  padding: 28px 14px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .alumni-person {
@@ -676,9 +744,45 @@ button {
   border-radius: 16px;
 }
 
+.support-buttons button.active {
+  color: white;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--blue), var(--violet));
+}
+
+.support-detail {
+  width: 100%;
+  min-height: 128px;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.62);
+  outline: none;
+  resize: vertical;
+}
+
+.request-submit {
+  width: fit-content;
+  margin-top: 12px;
+}
+
 .request-row {
   border-bottom: 1px solid var(--line);
   padding: 14px 0;
+}
+
+.request-row div {
+  min-width: 0;
+}
+
+.request-row small {
+  display: block;
+  max-width: 420px;
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .request-row:last-child {
@@ -821,6 +925,11 @@ button {
   text-align: left;
   font-weight: 800;
   background: rgba(255, 255, 255, 0.54);
+}
+
+.admin-tool-note {
+  margin-top: 12px;
+  background: rgba(23, 119, 255, 0.08);
 }
 
 .modal-backdrop {
@@ -1038,6 +1147,20 @@ button {
 
   .topbar,
   .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar select,
+  .request-submit {
+    width: 100%;
+  }
+
+  .composer {
+    align-items: flex-start;
+  }
+
+  .composer-actions {
     align-items: stretch;
     flex-direction: column;
   }

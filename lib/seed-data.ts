@@ -1,4 +1,4 @@
-import type { AlumniProfile, Module, SupportRequest } from "@/lib/types";
+import type { AlumniProfile, CommunityPost, Module, SupportRequest } from "@/lib/types";
 
 export const alumniSeed: AlumniProfile[] = [
   {
@@ -91,10 +91,66 @@ export const learningModules: Module[] = [
   }
 ];
 
+export const communityPosts: CommunityPost[] = [
+  {
+    id: "ari-pop-up",
+    author: "Ari Rivera",
+    cohort: "2024 alumni",
+    business: "apparel startup",
+    timeAgo: "18 min ago",
+    category: "Startup Win",
+    tone: "coral",
+    body: "First weekend pop-up is booked. I used the pricing worksheet from EEA and finally feel confident about margins.",
+    reactions: 18,
+    comments: 4
+  },
+  {
+    id: "jada-menu",
+    author: "Jada Lee",
+    cohort: "2025 alumni",
+    business: "food concept",
+    timeAgo: "42 min ago",
+    category: "Mentor Ask",
+    tone: "violet",
+    body:
+      "Does anyone have experience testing a menu before renting kitchen space? Looking for a mentor who knows food licensing basics.",
+    note: "Gary from the sponsor network can help. Tap Support to request an intro.",
+    reactions: 9,
+    comments: 7
+  }
+];
+
+export const supportCategories = [
+  "Business idea feedback",
+  "Pitch review",
+  "Marketing help",
+  "Funding guidance",
+  "Mentor intro",
+  "Website or brand"
+];
+
 export const supportRequests: SupportRequest[] = [
-  { title: "Pitch review", status: "Assigned to EEA staff" },
-  { title: "Food licensing", status: "Waiting on mentor match" },
-  { title: "Website feedback", status: "Resolved yesterday" }
+  {
+    id: "pitch-review",
+    title: "Pitch review",
+    category: "Pitch review",
+    status: "Assigned to EEA staff",
+    detail: "Review deck flow before next practice night."
+  },
+  {
+    id: "food-licensing",
+    title: "Food licensing",
+    category: "Mentor intro",
+    status: "Waiting on mentor match",
+    detail: "Find someone familiar with cottage food and kitchen rental decisions."
+  },
+  {
+    id: "website-feedback",
+    title: "Website feedback",
+    category: "Website or brand",
+    status: "Resolved yesterday",
+    detail: "Homepage copy and pricing section were reviewed."
+  }
 ];
 
 export const viewTitles = {

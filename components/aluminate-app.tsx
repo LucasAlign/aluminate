@@ -871,12 +871,15 @@ function DirectoryView({
                 <small>{person.email}</small>
               </span>
             </span>
-            <span>{person.cohort}</span>
-            <span>{person.school}</span>
-            <span>{person.industry}</span>
-            <span>{person.business}</span>
-            <span>{person.city}</span>
+            <span className="desktop-alumni-field">{person.cohort}</span>
+            <span className="desktop-alumni-field">{person.school}</span>
+            <span className="desktop-alumni-field">{person.industry}</span>
+            <span className="desktop-alumni-field">{person.business}</span>
+            <span className="desktop-alumni-field">{person.city}</span>
             <span className="status-chip">{person.status}</span>
+            <span className="mobile-alumni-meta">{person.industry} · {person.city}</span>
+            <span className="mobile-alumni-business">{person.business}</span>
+            <span className="mobile-alumni-cohort">{person.cohort}</span>
           </button>
         ))}
         {alumni.length === 0 && <div className="empty-state">No alumni match these filters yet.</div>}

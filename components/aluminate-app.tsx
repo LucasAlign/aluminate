@@ -1,6 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import {
+  createLivePost,
+  createLiveSupportRequest,
+  getLiveServices,
+  loadOrCreateUserProfile,
+  saveUserProfile,
+  signInWithEmailPassword,
+  signInForRole,
+  watchPosts,
+  watchSupportRequests,
+  type LiveUserProfile
+} from "@/lib/firebase-data";
 import { parseRosterFile } from "@/lib/importers";
 import {
   alumniSeed,
@@ -14,6 +27,7 @@ import {
 import type { AlumniProfile, CommunityPost, PostAttachment, SupportRequest, UserRole, ViewKey } from "@/lib/types";
 
 type ProfileTextField = Exclude<keyof AlumniProfile, "id" | "openToMentor">;
+type DraftPostAttachment = PostAttachment & { file?: File };
 
 type GlobalSearchResult = {
   id: string;
@@ -46,7 +60,17 @@ const navItems: Array<{ key: ViewKey; label: string; count: string; icon: ViewKe
 ];
 
 export function AluminateApp() {
+  const liveServices = useMemo(() => getLiveServices(), []);
+  const firebaseEnabled = Boolean(liveServices);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [liveProfile, setLiveProfile] = useState<LiveUserProfile | null>(null);
+  const [authLoading, setAuthLoading] = useState(firebaseEnabled);
+  const [liveNote, setLiveNote] = useState(
+    firebaseEnabled ? "Firebase is connected. Sign in to load live data." : "Demo mode: add Firebase env vars to enable live auth, posts, support, and uploads."
+  );
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginRole, setLoginRole] = useState<UserRole>("alumni");
   const [activeView, setActiveView] = useState<ViewKey>("community");
   const [alumni, setAlumni] = useState(alumniSeed);
   const [posts, setPosts] = useState(communityPosts);
@@ -58,7 +82,7 @@ export function AluminateApp() {
   const [draftProfile, setDraftProfile] = useState<AlumniProfile | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [postDraft, setPostDraft] = useState("");
-  const [postAttachments, setPostAttachments] = useState<PostAttachment[]>([]);
+  const [postAttachments, setPostAttachments] = useState<DraftPostAttachment[]>([]);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -69,6 +93,69 @@ export function AluminateApp() {
   const [importNote, setImportNote] = useState(
     "Upload CSV or Excel columns like name, cohort, school, industry, email, phone, business, status, city, skills."
   );
+
+  useEffect(() => {
+    if (!liveServices) {
+      setAuthLoading(false);
+      return;
+    }
+
+    let authSettled = false;
+    const authFallback = window.setTimeout(() => {
+      if (!authSettled) {
+        setAuthLoading(false);
+        setLiveNote("Firebase is connected. Sign in to load live data.");
+      }
+    }, 3000);
+
+    const stopAuthListener = onAuthStateChanged(liveServices.auth, async (user) => {
+      authSettled = true;
+      window.clearTimeout(authFallback);
+      if (!user) {
+        setLiveProfile(null);
+        setRole(null);
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await loadOrCreateUserProfile(user, "alumni");
+        if (!profile) return;
+        setLiveProfile(profile);
+        setRole(profile.role);
+        setAlumni((records) => [profile, ...records.filter((person) => person.id !== profile.id)]);
+        setActiveView("community");
+        setLiveNote("Firebase profile loaded. Feed and support requests are live.");
+      } catch (error) {
+        setLiveNote(error instanceof Error ? error.message : "Unable to load Firebase profile.");
+      } finally {
+        setAuthLoading(false);
+      }
+    });
+
+    return () => {
+      window.clearTimeout(authFallback);
+      stopAuthListener();
+    };
+  }, [liveServices]);
+
+  useEffect(() => {
+    if (!liveServices || !role) return;
+
+    const stopPosts = watchPosts(
+      (livePosts) => setPosts(livePosts),
+      (error) => setLiveNote(`Posts are still using local data: ${error.message}`)
+    );
+    const stopRequests = watchSupportRequests(
+      (liveRequests) => setRequests(liveRequests),
+      (error) => setLiveNote(`Support requests are still using local data: ${error.message}`)
+    );
+
+    return () => {
+      stopPosts?.();
+      stopRequests?.();
+    };
+  }, [liveServices, role]);
 
   const visibleNav = navItems.filter((item) => !item.adminOnly || role === "admin");
   const cohorts = useMemo(() => Array.from(new Set(alumni.map((person) => person.cohort))).sort().reverse(), [alumni]);
@@ -167,9 +254,73 @@ export function AluminateApp() {
     [alumni, requests]
   );
 
-  function loginAs(nextRole: UserRole) {
-    setRole(nextRole);
-    setActiveView("community");
+  async function loginAs(nextRole: UserRole) {
+    if (!liveServices) {
+      setRole(nextRole);
+      setActiveView("community");
+      return;
+    }
+
+    setAuthLoading(true);
+    setLiveNote("Opening Firebase sign-in...");
+    try {
+      const credential = await signInForRole(nextRole);
+      if (!credential) return;
+      const profile = await loadOrCreateUserProfile(credential.user, nextRole);
+      if (!profile) return;
+      setLiveProfile(profile);
+      setRole(profile.role);
+      setAlumni((records) => [profile, ...records.filter((person) => person.id !== profile.id)]);
+      setActiveView("community");
+      setLiveNote(`Signed in as ${profile.role}.`);
+    } catch (error) {
+      setLiveNote(error instanceof Error ? error.message : "Firebase sign-in failed.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function loginWithEmailPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!liveServices) {
+      setRole(loginRole);
+      setActiveView("community");
+      return;
+    }
+
+    if (!loginEmail.trim() || !loginPassword) {
+      setLiveNote("Enter an email and password to sign in.");
+      return;
+    }
+
+    setAuthLoading(true);
+    setLiveNote("Signing in...");
+    try {
+      const credential = await signInWithEmailPassword(loginEmail.trim(), loginPassword);
+      if (!credential) return;
+      const profile = await loadOrCreateUserProfile(credential.user, loginRole);
+      if (!profile) return;
+      setLiveProfile(profile);
+      setRole(profile.role);
+      setAlumni((records) => [profile, ...records.filter((person) => person.id !== profile.id)]);
+      setActiveView("community");
+      setLoginPassword("");
+      setLiveNote(`Signed in as ${profile.role}.`);
+    } catch (error) {
+      setLiveNote(error instanceof Error ? error.message : "Email sign-in failed.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function signOutCurrentUser() {
+    if (liveServices) {
+      await signOut(liveServices.auth);
+      setLiveNote("Signed out.");
+    }
+    setRole(null);
+    setLiveProfile(null);
   }
 
   function changeView(view: ViewKey) {
@@ -188,16 +339,40 @@ export function AluminateApp() {
     setDraftProfile({ ...person });
   }
 
-  function saveProfile() {
+  async function saveProfile() {
     if (!draftProfile) return;
     setAlumni((records) => records.map((person) => (person.id === draftProfile.id ? draftProfile : person)));
+    if (liveProfile && draftProfile.id === liveProfile.id) {
+      const updatedProfile = { ...liveProfile, ...draftProfile };
+      setLiveProfile(updatedProfile);
+      await saveUserProfile(updatedProfile);
+      setLiveNote("Profile saved to Firebase.");
+    }
     setActiveProfile(null);
     setDraftProfile(null);
   }
 
-  function createPost() {
+  async function createPost() {
     const body = postDraft.trim();
     if (!body && postAttachments.length === 0) return;
+
+    if (liveServices && liveProfile) {
+      try {
+        await createLivePost({
+          body,
+          files: postAttachments.flatMap((attachment) => (attachment.file ? [attachment.file] : [])),
+          profile: liveProfile
+        });
+        setPostDraft("");
+        setPostAttachments([]);
+        setComposerOpen(false);
+        setLiveNote("Post saved to Firebase.");
+      } catch (error) {
+        setLiveNote(error instanceof Error ? error.message : "Unable to save this post.");
+      }
+      return;
+    }
+
     const newPost: CommunityPost = {
       id: `post-${Date.now()}`,
       author: "Maya Chen",
@@ -219,11 +394,14 @@ export function AluminateApp() {
 
   function addPostFiles(fileList: FileList | null) {
     if (!fileList) return;
-    const nextFiles = Array.from(fileList).map<PostAttachment>((file, index) => ({
+    const nextFiles = Array.from(fileList).map<DraftPostAttachment>((file, index) => ({
       id: `attachment-${Date.now()}-${index}`,
       name: file.name,
       kind: file.type.startsWith("image/") ? "image" : "file",
-      url: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined
+      url: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+      contentType: file.type,
+      size: file.size,
+      file
     }));
     setPostAttachments((records) => [...records, ...nextFiles]);
   }
@@ -232,9 +410,21 @@ export function AluminateApp() {
     setPostAttachments((records) => records.filter((attachment) => attachment.id !== id));
   }
 
-  function createSupportRequest() {
+  async function createSupportRequest() {
     const detail = supportDetail.trim();
     if (!detail) return;
+
+    if (liveServices && liveProfile) {
+      try {
+        await createLiveSupportRequest({ category: supportCategory, detail, profile: liveProfile });
+        setSupportDetail("");
+        setLiveNote("Support request saved to Firebase.");
+      } catch (error) {
+        setLiveNote(error instanceof Error ? error.message : "Unable to save this support request.");
+      }
+      return;
+    }
+
     const newRequest: SupportRequest = {
       id: `request-${Date.now()}`,
       title: supportCategory,
@@ -270,6 +460,19 @@ export function AluminateApp() {
     }
   }
 
+  if (authLoading) {
+    return (
+      <main className="login-screen">
+        <section className="glass-panel login-card">
+          <LogoBlock large />
+          <p className="eyebrow">Emerging Entrepreneurs Academy</p>
+          <h1>Aluminate</h1>
+          <p className="login-copy">Loading your Aluminate session...</p>
+        </section>
+      </main>
+    );
+  }
+
   if (!role) {
     return (
       <main className="login-screen">
@@ -277,15 +480,44 @@ export function AluminateApp() {
           <LogoBlock large />
           <p className="eyebrow">Emerging Entrepreneurs Academy</p>
           <h1>Aluminate</h1>
-          <p className="login-copy">Choose the right portal. Production auth will bind this role to the signed-in account.</p>
-          <div className="login-actions">
-            <button className="primary-button" onClick={() => loginAs("alumni")}>
-              Alumni Login
+          <p className="login-copy">{liveNote}</p>
+          <form className="login-form" onSubmit={(event) => void loginWithEmailPassword(event)}>
+            <div className="role-toggle" aria-label="Choose sign-in role">
+              <button type="button" className={loginRole === "alumni" ? "active" : ""} onClick={() => setLoginRole("alumni")}>
+                Alumni
+              </button>
+              <button type="button" className={loginRole === "admin" ? "active" : ""} onClick={() => setLoginRole("admin")}>
+                Admin
+              </button>
+            </div>
+            <input
+              aria-label="Email"
+              autoComplete="email"
+              inputMode="email"
+              placeholder="Email"
+              type="email"
+              value={loginEmail}
+              onChange={(event) => setLoginEmail(event.target.value)}
+            />
+            <input
+              aria-label="Password"
+              autoComplete="current-password"
+              placeholder="Password"
+              type="password"
+              value={loginPassword}
+              onChange={(event) => setLoginPassword(event.target.value)}
+            />
+            <button className="primary-button" type="submit">
+              Sign In
             </button>
-            <button className="secondary-button" onClick={() => loginAs("admin")}>
-              Admin Login
-            </button>
-          </div>
+          </form>
+          {firebaseEnabled && (
+            <div className="login-actions compact">
+              <button className="secondary-button" onClick={() => void loginAs(loginRole)}>
+                Continue with Google
+              </button>
+            </div>
+          )}
         </section>
       </main>
     );
@@ -309,14 +541,15 @@ export function AluminateApp() {
         </nav>
 
         <section className="theme-card">
-          <p className="section-label">Phase 1</p>
+          <p className="section-label">{firebaseEnabled ? "Phase 2 live" : "Phase 2 demo"}</p>
           <div className="role-grid compact">
             <div>
               <strong>{role === "admin" ? "Admin" : "Alumni"}</strong>
-              <span>{role === "admin" ? "Reports, import, moderation" : "Community, learning, support"}</span>
+              <span>{liveProfile?.email || (role === "admin" ? "Reports, import, moderation" : "Community, learning, support")}</span>
             </div>
           </div>
-          <button className="secondary-button logout-button" onClick={() => setRole(null)}>
+          <div className="live-note">{liveNote}</div>
+          <button className="secondary-button logout-button" onClick={() => void signOutCurrentUser()}>
             <span className="button-icon">O</span>
             Sign out
           </button>
@@ -326,7 +559,7 @@ export function AluminateApp() {
       <main className="main-panel">
         <header className="glass-panel topbar">
           <div>
-            <p className="eyebrow">Welcome back, Maya</p>
+            <p className="eyebrow">Welcome back, {liveProfile?.name.split(" ")[0] || "Maya"}</p>
             <h2>{viewTitles[activeView]}</h2>
           </div>
           <div className="top-actions">
@@ -464,7 +697,7 @@ export function AluminateApp() {
             onCreateRequest={createSupportRequest}
           />
         )}
-        {activeView === "profile" && <ProfileView profile={alumni[0]} onEdit={openProfile} />}
+        {activeView === "profile" && <ProfileView profile={liveProfile ?? alumni[0]} onEdit={openProfile} />}
         {activeView === "admin" && role === "admin" && (
           <AdminView
             alumniCount={alumni.length}

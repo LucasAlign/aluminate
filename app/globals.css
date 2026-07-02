@@ -1,15 +1,15 @@
 :root {
-  --bg: #f7f8fc;
-  --ink: #111827;
-  --muted: #667085;
+  --bg: #f3f8fc;
+  --ink: #0b2235;
+  --muted: #5d7182;
   --panel: rgba(255, 255, 255, 0.72);
-  --line: rgba(17, 24, 39, 0.1);
-  --blue: #1777ff;
-  --coral: #ff5f57;
-  --green: #31c48d;
-  --gold: #f8b84e;
-  --violet: #8a5cf6;
-  --shadow: 0 24px 80px rgba(36, 45, 78, 0.18);
+  --line: rgba(0, 76, 124, 0.13);
+  --blue: #0072b8;
+  --coral: #e21b23;
+  --green: #1597c5;
+  --gold: #f05a61;
+  --violet: #004c7c;
+  --shadow: 0 24px 80px rgba(0, 65, 108, 0.17);
 }
 
 * {
@@ -17,16 +17,29 @@
 }
 
 body {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   margin: 0;
   color: var(--ink);
   background:
-    radial-gradient(circle at 15% 10%, rgba(23, 119, 255, 0.2), transparent 34%),
-    radial-gradient(circle at 78% 8%, rgba(255, 95, 87, 0.2), transparent 30%),
-    radial-gradient(circle at 70% 78%, rgba(49, 196, 141, 0.18), transparent 32%),
+    radial-gradient(circle at 15% 10%, rgba(0, 114, 184, 0.18), transparent 34%),
+    radial-gradient(circle at 78% 8%, rgba(226, 27, 35, 0.14), transparent 30%),
+    radial-gradient(circle at 70% 78%, rgba(21, 151, 197, 0.14), transparent 32%),
     var(--bg);
   overflow-x: hidden;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body::before {
+  position: fixed;
+  z-index: -1;
+  inset: -12px;
+  content: "";
+  background: url("/assets/eea-logo.png") center / cover no-repeat;
+  opacity: 0.3;
+  filter: blur(5px);
+  pointer-events: none;
 }
 
 button,
@@ -78,6 +91,52 @@ button {
   margin-top: 20px;
 }
 
+.login-actions.compact {
+  margin-top: 10px;
+}
+
+.login-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.login-form input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.68);
+  outline: none;
+}
+
+.role-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.role-toggle button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--muted);
+  font-weight: 850;
+  background: transparent;
+}
+
+.role-toggle button.active {
+  color: white;
+  background: linear-gradient(135deg, var(--blue), var(--violet));
+  box-shadow: 0 12px 24px rgba(0, 114, 184, 0.18);
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 292px minmax(0, 1fr);
@@ -113,7 +172,7 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 16px 32px rgba(36, 45, 78, 0.16);
+  box-shadow: 0 16px 32px rgba(0, 65, 108, 0.16);
 }
 
 .large-logo {
@@ -196,7 +255,7 @@ button {
   color: white;
   border-color: transparent;
   background: linear-gradient(135deg, var(--blue), var(--violet));
-  box-shadow: 0 18px 38px rgba(23, 119, 255, 0.22);
+  box-shadow: 0 18px 38px rgba(0, 114, 184, 0.22);
 }
 
 .nav-item strong {
@@ -240,6 +299,13 @@ button {
   font-size: 13px;
 }
 
+.live-note {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .main-panel {
   display: flex;
   min-width: 0;
@@ -249,6 +315,7 @@ button {
 
 .topbar {
   position: relative;
+  z-index: 10;
   display: flex;
   min-height: 92px;
   align-items: center;
@@ -307,7 +374,7 @@ button {
 .icon-button.active {
   color: white;
   background: linear-gradient(135deg, var(--blue), var(--violet));
-  box-shadow: 0 14px 28px rgba(23, 119, 255, 0.18);
+  box-shadow: 0 14px 28px rgba(0, 114, 184, 0.18);
 }
 
 .primary-button {
@@ -315,7 +382,7 @@ button {
   padding: 0 18px;
   color: white;
   background: linear-gradient(135deg, var(--blue), var(--coral));
-  box-shadow: 0 16px 32px rgba(255, 95, 87, 0.22);
+  box-shadow: 0 16px 32px rgba(226, 27, 35, 0.22);
 }
 
 .top-popover {
@@ -366,7 +433,7 @@ button {
 }
 
 .popover-list button:hover {
-  background: rgba(23, 119, 255, 0.08);
+  background: rgba(0, 114, 184, 0.08);
 }
 
 .popover-list span,
@@ -457,7 +524,7 @@ button {
   color: white;
   font-weight: 800;
   background: linear-gradient(135deg, var(--blue), var(--coral));
-  box-shadow: 0 16px 30px rgba(23, 119, 255, 0.24);
+  box-shadow: 0 16px 30px rgba(0, 114, 184, 0.24);
 }
 
 .avatar.coral {
@@ -469,7 +536,7 @@ button {
 }
 
 .avatar.blue {
-  background: linear-gradient(135deg, var(--blue), #6dd8ff);
+  background: linear-gradient(135deg, var(--blue), #63c7e8);
 }
 
 .avatar.violet {
@@ -688,7 +755,7 @@ button {
   border-radius: 18px;
   padding: 14px;
   color: var(--ink);
-  background: linear-gradient(135deg, rgba(49, 196, 141, 0.16), rgba(23, 119, 255, 0.12));
+  background: linear-gradient(135deg, rgba(21, 151, 197, 0.16), rgba(0, 114, 184, 0.12));
 }
 
 .mini-row,
@@ -838,7 +905,7 @@ button {
 }
 
 .mini-avatar.blue {
-  background: linear-gradient(135deg, var(--blue), #6dd8ff);
+  background: linear-gradient(135deg, var(--blue), #63c7e8);
 }
 
 .alumni-person strong,
@@ -1061,7 +1128,7 @@ button {
   color: white;
   font-weight: 800;
   background: linear-gradient(135deg, var(--blue), var(--violet));
-  box-shadow: 0 12px 26px rgba(23, 119, 255, 0.18);
+  box-shadow: 0 12px 26px rgba(0, 114, 184, 0.18);
 }
 
 .import-button input {
@@ -1116,7 +1183,7 @@ button {
 
 .admin-tool-note {
   margin-top: 12px;
-  background: rgba(23, 119, 255, 0.08);
+  background: rgba(0, 114, 184, 0.08);
 }
 
 .modal-backdrop {
@@ -1275,13 +1342,13 @@ button {
 @media (max-width: 640px) {
   body {
     background:
-      radial-gradient(circle at 12% 4%, rgba(23, 119, 255, 0.14), transparent 28%),
-      radial-gradient(circle at 92% 2%, rgba(255, 95, 87, 0.12), transparent 24%),
+      radial-gradient(circle at 12% 4%, rgba(0, 114, 184, 0.14), transparent 28%),
+      radial-gradient(circle at 92% 2%, rgba(226, 27, 35, 0.12), transparent 24%),
       var(--bg);
   }
 
   .glass-panel {
-    box-shadow: 0 12px 38px rgba(36, 45, 78, 0.1);
+    box-shadow: 0 12px 38px rgba(0, 65, 108, 0.1);
     backdrop-filter: blur(20px) saturate(1.2);
   }
 
@@ -1354,7 +1421,7 @@ button {
     background: rgba(255, 255, 255, 0.94);
     box-shadow:
       0 22px 70px rgba(17, 24, 39, 0.26),
-      0 8px 24px rgba(23, 119, 255, 0.12),
+      0 8px 24px rgba(0, 114, 184, 0.12),
       inset 0 1px 0 rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(26px) saturate(1.35);
   }
@@ -1370,7 +1437,7 @@ button {
     border: 0;
     border-radius: 18px;
     padding: 5px 0;
-    color: #4b5563;
+    color: #496579;
     font-size: 10px;
     font-weight: 850;
     background: transparent;
@@ -1399,7 +1466,7 @@ button {
     color: white;
     background: linear-gradient(135deg, var(--blue), var(--violet));
     box-shadow:
-      0 12px 24px rgba(23, 119, 255, 0.3),
+      0 12px 24px rgba(0, 114, 184, 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.24);
   }
 
@@ -1568,7 +1635,7 @@ button {
     border-radius: 18px;
     padding: 14px;
     background: rgba(255, 255, 255, 0.7);
-    box-shadow: 0 10px 28px rgba(36, 45, 78, 0.08);
+    box-shadow: 0 10px 28px rgba(0, 65, 108, 0.08);
     backdrop-filter: blur(18px);
   }
 

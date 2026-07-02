@@ -4,6 +4,8 @@ export type ViewKey = "community" | "directory" | "learn" | "support" | "profile
 
 export type AlumniProfile = {
   id: string;
+  uid?: string;
+  role?: UserRole;
   name: string;
   cohort: string;
   school: string;
@@ -19,6 +21,7 @@ export type AlumniProfile = {
 
 export type CommunityPost = {
   id: string;
+  authorId?: string;
   author: string;
   cohort: string;
   business: string;
@@ -30,6 +33,7 @@ export type CommunityPost = {
   attachments?: PostAttachment[];
   reactions: number;
   comments: number;
+  createdAt?: number;
 };
 
 export type PostAttachment = {
@@ -38,14 +42,19 @@ export type PostAttachment = {
   kind: "image" | "file";
   url?: string;
   label?: string;
+  storagePath?: string;
+  contentType?: string;
+  size?: number;
 };
 
 export type SupportRequest = {
   id: string;
+  authorId?: string;
   title: string;
   category: string;
   status: string;
   detail: string;
+  createdAt?: number;
 };
 
 export type Module = {

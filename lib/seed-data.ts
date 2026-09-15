@@ -1,75 +1,279 @@
-import type { AlumniProfile, CommunityPost, Module, SupportRequest } from "@/lib/types";
+import type { AlumniProfile, CommunityPost, Conversation, Module, SupportRequest } from "@/lib/types";
+
+const alumniLeadershipSource = "https://www.linkedin.com/posts/emerging-entrepreneurs-academy_eea2026-alumni-networking-activity-7474906729839837184-XEKf";
+const officialLinkedIn = "https://www.linkedin.com/company/emerging-entrepreneurs-academy";
+
+const publicAlumniDefaults = {
+  email: "",
+  phone: "",
+  city: "Berks County, PA",
+  verifiedPublic: true,
+  sourceLabel: "Public EEA source",
+  openToMentor: false
+} as const;
 
 export const alumniSeed: AlumniProfile[] = [
   {
-    id: "maya-chen",
-    name: "Maya Chen",
+    ...publicAlumniDefaults,
+    id: "hailey-lopez",
+    name: "Hailey Lopez",
     cohort: "2023",
-    school: "Wyomissing Area",
-    industry: "Digital media",
-    email: "maya.chen@example.com",
-    phone: "484-555-0198",
-    city: "Wyomissing, PA",
-    business: "Brand studio for student founders",
-    status: "Founder",
-    skills: "Branding, websites, social media. Needs help with pricing retainers.",
-    openToMentor: true
+    school: "Not publicly listed",
+    industry: "Leadership",
+    business: "EEA Alumni Association",
+    status: "Alumni President",
+    skills: "Business planning, leadership, public speaking, and alumni mentorship.",
+    openToMentor: true,
+    sourceUrl: alumniLeadershipSource
   },
   {
-    id: "ari-rivera",
-    name: "Ari Rivera",
-    cohort: "2024",
-    school: "Reading High",
-    industry: "Apparel",
-    email: "ari.rivera@example.com",
-    phone: "484-555-0142",
+    ...publicAlumniDefaults,
+    id: "michelle-karanja",
+    name: "Michelle Karanja",
+    cohort: "Alumni",
+    school: "Penn State Berks",
+    industry: "Accounting & finance",
     city: "Reading, PA",
-    business: "Local apparel pop-up brand",
-    status: "Launching",
-    skills: "Retail, pop-ups, sales. Needs vendor fair contacts.",
-    openToMentor: false
+    business: "EEA Alumni Association",
+    status: "Vice President",
+    skills: "Accounting, finance, networking, and peer mentorship.",
+    openToMentor: true,
+    sourceLabel: "EEA and public professional profile",
+    sourceUrl: "https://www.linkedin.com/in/michelle-karanja-a45664279"
   },
   {
-    id: "jada-lee",
-    name: "Jada Lee",
+    ...publicAlumniDefaults,
+    id: "ston-nelson",
+    name: "Ston Nelson",
     cohort: "2025",
-    school: "Exeter",
-    industry: "Food concept",
-    email: "jada.lee@example.com",
-    phone: "484-555-0176",
-    city: "Exeter, PA",
-    business: "Weekend dessert catering idea",
-    status: "Early idea",
-    skills: "Menu testing, customer discovery. Needs licensing guidance.",
-    openToMentor: false
+    school: "Kutztown University",
+    industry: "Law & real estate",
+    city: "Reading, PA",
+    business: "EEA Alumni Association",
+    status: "Program Director",
+    skills: "Leadership, real estate, public service, and alumni mentoring.",
+    openToMentor: true,
+    sourceLabel: "Public professional profile",
+    sourceUrl: "https://www.linkedin.com/in/ston-nelson-764aa5256"
   },
   {
-    id: "noah-patel",
-    name: "Noah Patel",
-    cohort: "2022",
-    school: "Wilson",
-    industry: "Lawn care",
-    email: "noah.patel@example.com",
-    phone: "484-555-0113",
-    city: "Sinking Spring, PA",
-    business: "Neighborhood lawn care service",
-    status: "Operating",
-    skills: "Hiring, estimates, operations. Open to mentor younger alumni.",
-    openToMentor: true
+    ...publicAlumniDefaults,
+    id: "nneoma-deborah-uchendu",
+    name: "Nneoma Deborah Uchendu",
+    cohort: "Alumni",
+    school: "Indiana University of Pennsylvania",
+    industry: "Communications",
+    business: "EEA Alumni Association",
+    status: "Communications Director",
+    skills: "Communications, community building, and professional networking.",
+    openToMentor: true,
+    sourceLabel: "EEA and public professional profile",
+    sourceUrl: "https://www.linkedin.com/in/nneoma-deborah-uchendu-331749233"
   },
   {
-    id: "sofia-martinez",
-    name: "Sofia Martinez",
-    cohort: "2024",
-    school: "Muhlenberg",
-    industry: "Beauty services",
-    email: "sofia.martinez@example.com",
-    phone: "484-555-0187",
-    city: "Laureldale, PA",
-    business: "Mobile nail art studio",
-    status: "Founder",
-    skills: "Client scheduling, brand partnerships, customer referrals.",
-    openToMentor: true
+    ...publicAlumniDefaults,
+    id: "nolin-bourland",
+    name: "Nolin Bourland",
+    cohort: "Alumni",
+    school: "Governor Mifflin",
+    industry: "Operations",
+    business: "Pinky's Junk Removal",
+    status: "Events Co-Chair",
+    skills: "Operations, events, and peer mentorship.",
+    openToMentor: true,
+    sourceUrl: "https://www.linkedin.com/posts/christine-kreisher-1b702741_thank-you-kristi-it-was-an-honor-to-have-activity-7480637450885890050-70YP"
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "braeden-ruth",
+    name: "Braeden Ruth",
+    cohort: "Alumni",
+    school: "Alvernia University",
+    industry: "Hospitality & business",
+    city: "Reading, PA",
+    business: "Duck Donuts Wyomissing",
+    status: "Events Co-Chair",
+    skills: "Events, hospitality, business, and alumni engagement.",
+    openToMentor: true,
+    sourceLabel: "EEA and public professional profile",
+    sourceUrl: "https://www.linkedin.com/in/braeden-ruth-475752231"
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "carter-hamm",
+    name: "Carter Hamm",
+    cohort: "Alumni",
+    school: "Not publicly listed",
+    industry: "Programming & leadership",
+    city: "Robesonia, PA",
+    business: "EEA Alumni Association",
+    status: "Programming Director",
+    skills: "Program planning, fundraising, mentorship, and alumni leadership.",
+    openToMentor: true,
+    sourceLabel: "Public professional profile",
+    sourceUrl: "https://www.linkedin.com/in/carter-hamm-202309365"
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "abigail-santiago",
+    name: "Abigail Santiago",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Cosmetology",
+    business: "Skin Sanctuary internship",
+    status: "Graduate",
+    skills: "Digital media, marketing, financial literacy, and business culture.",
+    sourceLabel: "Graduate's public announcement",
+    sourceUrl: "https://www.linkedin.com/posts/abigail-santiago-0524a7412_emergingentrepreneursacademy-classof2026-activity-7489728838093012994-qETE"
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "jayvian-rodriguez",
+    name: "Jayvian Rodriguez",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Entrepreneurship",
+    business: "EEA Dream Pitch",
+    status: "Graduate",
+    skills: "Budgeting, marketing, resumes, leadership, and business fundamentals.",
+    sourceLabel: "Graduate's public announcement",
+    sourceUrl: "https://www.linkedin.com/posts/activity-7487870558106480640-mXu7"
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "isha-kaur",
+    name: "Isha Kaur",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Leadership",
+    business: "EEA Dream Pitch",
+    status: "Class Representative",
+    skills: "Leadership, public speaking, teamwork, and business planning.",
+    sourceUrl: officialLinkedIn
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "david-uchendu",
+    name: "David Uchendu",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Entrepreneurship",
+    business: "EEA Dream Pitch",
+    status: "Graduate",
+    skills: "Leadership, teamwork, and business planning.",
+    sourceUrl: officialLinkedIn
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "amrit-kalra",
+    name: "Amrit Kalra",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Marketing & finance",
+    business: "Mail Shark internship",
+    status: "Graduate",
+    skills: "Growth marketing, client negotiation, product management, and company culture.",
+    sourceLabel: "EEA public internship feature",
+    sourceUrl: "https://www.linkedin.com/posts/emerging-entrepreneurs-academy_this-is-what-our-program-is-all-about-so-activity-7496548117509545984-0oaH"
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "yuvraj-singh",
+    name: "Yuvraj Singh",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Software & AI",
+    business: "Pinky's Junk Removal internship",
+    status: "Graduate",
+    skills: "Software development, AI, digital marketing, SEO, and analytics dashboards.",
+    sourceLabel: "Public internship reflection",
+    sourceUrl: "https://www.linkedin.com/posts/yuvraj-singh-1532b7418_what-happens-when-you-give-high-schoolers-activity-7493094171164098560--IgM"
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "noemi-evelyn-barretta",
+    name: "Noemi Evelyn Barretta",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Photography",
+    business: "Studio 413 Photography internship",
+    status: "Graduate",
+    skills: "Studio lighting, camera settings, photography, and business fundamentals.",
+    sourceUrl: officialLinkedIn
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "axel-tejada",
+    name: "Axel Tejada",
+    cohort: "2026",
+    school: "Not publicly listed",
+    industry: "Photography",
+    business: "Studio 413 Photography internship",
+    status: "Graduate",
+    skills: "Studio lighting, camera settings, photography, and business fundamentals.",
+    sourceUrl: officialLinkedIn
+  },
+  {
+    ...publicAlumniDefaults,
+    id: "melvyn-frazier",
+    name: "Melvyn C.C. Frazier Jr.",
+    cohort: "Alumni",
+    school: "Reading High School",
+    industry: "Apparel",
+    city: "Reading, PA",
+    business: "Saint Melly 223",
+    status: "In memoriam",
+    skills: "Fashion, creativity, and entrepreneurship.",
+    canMessage: false,
+    sourceLabel: "Public memorial",
+    sourceUrl: "https://www.legacy.com/us/obituaries/name/melvyn-frazier-obituary?id=58729674"
+  }
+];
+
+export const demoProfile: AlumniProfile = {
+  id: "demo-alumni",
+  name: "Demo Alumni",
+  cohort: "2026",
+  school: "Emerging Entrepreneurs Academy",
+  industry: "Entrepreneurship",
+  email: "",
+  phone: "",
+  city: "Berks County, PA",
+  business: "My next venture",
+  status: "Active",
+  skills: "Add your goals, skills, and the kind of help you can offer.",
+  openToMentor: false,
+  canMessage: true
+};
+
+export const conversationSeed: Conversation[] = [
+  {
+    id: "eea-alumni-team",
+    participantName: "EEA Alumni Team",
+    participantDetail: "Program announcements and alumni help",
+    unread: 1,
+    messages: [
+      {
+        id: "welcome-message",
+        sender: "them",
+        body: "Welcome to Aluminate! Use Messages to ask the alumni team a question or connect with someone in the directory.",
+        sentAt: "Today, 9:15 AM"
+      }
+    ]
+  },
+  {
+    id: "eea-support-desk",
+    participantName: "EEA Support Desk",
+    participantDetail: "Private help from program staff",
+    unread: 0,
+    messages: [
+      {
+        id: "support-tip",
+        sender: "them",
+        body: "Need structured help? Submit a request in Support. Use this conversation for a quick private question.",
+        sentAt: "Yesterday"
+      }
+    ]
   }
 ];
 
@@ -93,81 +297,29 @@ export const learningModules: Module[] = [
 
 export const communityPosts: CommunityPost[] = [
   {
-    id: "ari-pop-up",
-    author: "Ari Rivera",
-    cohort: "2024 alumni",
-    business: "apparel startup",
-    timeAgo: "18 min ago",
-    category: "Startup Win",
-    tone: "coral",
-    body: "First weekend pop-up is booked. I used the pricing worksheet from EEA and finally feel confident about margins.",
-    attachments: [
-      { id: "ari-booth", name: "Pop-up booth mockup", kind: "image", label: "Booth setup" },
-      { id: "ari-products", name: "First product rack", kind: "image", label: "Product rack" },
-      { id: "ari-brand", name: "Brand color board", kind: "image", label: "Color board" }
-    ],
-    reactions: 18,
-    comments: 4
-  },
-  {
-    id: "jada-menu",
-    author: "Jada Lee",
-    cohort: "2025 alumni",
-    business: "food concept",
-    timeAgo: "42 min ago",
-    category: "Mentor Ask",
-    tone: "violet",
-    body:
-      "Does anyone have experience testing a menu before renting kitchen space? Looking for a mentor who knows food licensing basics.",
-    note: "Gary from the sponsor network can help. Tap Support to request an intro.",
-    attachments: [{ id: "jada-menu-pdf", name: "draft-menu-pricing.pdf", kind: "file" }],
-    reactions: 9,
-    comments: 7
-  },
-  {
-    id: "noah-hiring",
-    author: "Noah Patel",
-    cohort: "2022 alumni",
-    business: "lawn care service",
-    timeAgo: "2 hr ago",
-    category: "Hiring",
-    tone: "green",
-    body:
-      "I am bringing on two weekend helpers for summer routes. Sharing the interview questions and training checklist in case anyone else is hiring.",
-    attachments: [{ id: "noah-checklist", name: "summer-helper-training-checklist.docx", kind: "file" }],
-    reactions: 24,
-    comments: 6
-  },
-  {
-    id: "sofia-before-after",
-    author: "Sofia Martinez",
-    cohort: "2024 alumni",
-    business: "mobile nail art studio",
-    timeAgo: "Yesterday",
-    category: "Portfolio",
+    id: "alumni-welcome",
+    author: "EEA Alumni Team",
+    cohort: "Program update",
+    business: "Alumni Association",
+    timeAgo: "Today",
+    category: "Welcome",
     tone: "blue",
-    body:
-      "Tested a small event package for prom season. The bundle sold better when I showed three simple examples instead of a giant menu.",
-    attachments: [
-      { id: "sofia-set-a", name: "Event package sample", kind: "image", label: "Sample A" },
-      { id: "sofia-set-b", name: "Client inspiration board", kind: "image", label: "Inspiration" }
-    ],
-    reactions: 31,
-    comments: 9
+    body: "Welcome to the Aluminate preview. Browse verified public alumni profiles, start a private conversation, or ask the community for help.",
+    reactions: 12,
+    comments: 2
   },
   {
-    id: "maya-resource",
-    author: "Maya Chen",
-    cohort: "2023 alumni",
-    business: "digital media",
+    id: "mentor-tip",
+    author: "EEA Support Team",
+    cohort: "Program resource",
+    business: "Mentor network",
     timeAgo: "Yesterday",
-    category: "Resource",
+    category: "Getting Started",
     tone: "violet",
-    body:
-      "I cleaned up the one-page website checklist I use with first-time founders. It covers homepage sections, testimonials, photos, and launch day QA.",
-    attachments: [{ id: "maya-checklist", name: "student-founder-website-checklist.pdf", kind: "file" }],
-    reactions: 42,
-    comments: 12
+    body: "Not sure where to begin? Open a verified alumni profile and choose Message, or use Support when you want EEA staff to coordinate an introduction.",
+    note: "Private messages stay separate from public community posts.",
+    reactions: 8,
+    comments: 1
   }
 ];
 
@@ -207,6 +359,7 @@ export const supportRequests: SupportRequest[] = [
 export const viewTitles = {
   community: "Community Home",
   directory: "Alumni Directory",
+  messages: "Messages",
   learn: "Learning Hub",
   support: "Support Center",
   profile: "My Profile",

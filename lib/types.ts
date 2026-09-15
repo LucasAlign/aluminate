@@ -1,6 +1,6 @@
 export type UserRole = "alumni" | "admin";
 
-export type ViewKey = "community" | "directory" | "learn" | "support" | "profile" | "admin";
+export type ViewKey = "community" | "directory" | "messages" | "learn" | "support" | "profile" | "admin";
 
 export type AlumniProfile = {
   id: string;
@@ -17,6 +17,26 @@ export type AlumniProfile = {
   status: string;
   skills: string;
   openToMentor: boolean;
+  verifiedPublic?: boolean;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  canMessage?: boolean;
+};
+
+export type DirectMessage = {
+  id: string;
+  sender: "me" | "them";
+  body: string;
+  sentAt: string;
+};
+
+export type Conversation = {
+  id: string;
+  participantId?: string;
+  participantName: string;
+  participantDetail: string;
+  unread: number;
+  messages: DirectMessage[];
 };
 
 export type CommunityPost = {

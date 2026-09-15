@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { MessagesView } from "@/components/messages-view";
+import { AskGaryView } from "@/components/ask-gary-view";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   createLivePost,
@@ -18,15 +20,20 @@ import { parseRosterFile } from "@/lib/importers";
 import {
   alumniSeed,
   communityPosts,
+  conversationSeed,
+  demoProfile,
   initials,
   learningModules,
   supportCategories,
   supportRequests,
   viewTitles
 } from "@/lib/seed-data";
-import type { AlumniProfile, CommunityPost, PostAttachment, SupportRequest, UserRole, ViewKey } from "@/lib/types";
+import type { AlumniProfile, CommunityPost, Conversation, PostAttachment, SupportRequest, UserRole, ViewKey } from "@/lib/types";
 
-type ProfileTextField = Exclude<keyof AlumniProfile, "id" | "openToMentor">;
+type ProfileTextField = Exclude<
+  keyof AlumniProfile,
+  "id" | "openToMentor" | "verifiedPublic" | "sourceLabel" | "sourceUrl" | "canMessage"
+>;
 type DraftPostAttachment = PostAttachment & { file?: File };
 
 type GlobalSearchResult = {
@@ -51,10 +58,11 @@ const profileFields: ProfileTextField[] = [
 ];
 
 const navItems: Array<{ key: ViewKey; label: string; count: string; icon: ViewKey; adminOnly?: boolean }> = [
-  { key: "community", label: "Home", count: "12", icon: "community" },
-  { key: "directory", label: "Directory", count: "248", icon: "directory" },
-  { key: "learn", label: "Learn", count: "36", icon: "learn" },
-  { key: "support", label: "Support", count: "4", icon: "support" },
+  { key: "community", label: "Home", count: "New", icon: "community" },
+  { key: "directory", label: "Directory", count: "16", icon: "directory" },
+  { key: "messages", label: "Messages", count: "1", icon: "messages" },
+  { key: "learn", label: "Learn", count: "3", icon: "learn" },
+  { key: "support", label: "Support", count: "3", icon: "support" },
   { key: "profile", label: "Profile", count: "You", icon: "profile" },
   { key: "admin", label: "Admin", count: "Live", icon: "admin", adminOnly: true }
 ];
@@ -64,9 +72,10 @@ export function AluminateApp() {
   const firebaseEnabled = Boolean(liveServices);
   const [role, setRole] = useState<UserRole | null>(null);
   const [liveProfile, setLiveProfile] = useState<LiveUserProfile | null>(null);
+  const [demoUserProfile, setDemoUserProfile] = useState(demoProfile);
   const [authLoading, setAuthLoading] = useState(firebaseEnabled);
   const [liveNote, setLiveNote] = useState(
-    firebaseEnabled ? "Firebase is connected. Sign in to load live data." : "Demo mode: add Firebase env vars to enable live auth, posts, support, and uploads."
+    firebaseEnabled ? "Your organization workspace is connected." : "Preview mode: changes are saved only on this device."
   );
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -75,6 +84,10 @@ export function AluminateApp() {
   const [alumni, setAlumni] = useState(alumniSeed);
   const [posts, setPosts] = useState(communityPosts);
   const [requests, setRequests] = useState(supportRequests);
+  const [conversations, setConversations] = useState<Conversation[]>(conversationSeed);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(conversationSeed[0]?.id ?? null);
+  const [messageDraft, setMessageDraft] = useState("");
+  const [messagesHydrated, setMessagesHydrated] = useState(false);
   const [search, setSearch] = useState("");
   const [cohortFilter, setCohortFilter] = useState("all");
   const [mentorOnly, setMentorOnly] = useState(false);
@@ -93,6 +106,35 @@ export function AluminateApp() {
   const [importNote, setImportNote] = useState(
     "Upload CSV or Excel columns like name, cohort, school, industry, email, phone, business, status, city, skills."
   );
+
+  useEffect(() => {
+    if (liveServices) return;
+    const storedRole = window.sessionStorage.getItem("aluminate-demo-role");
+    if (storedRole === "alumni" || storedRole === "admin") setRole(storedRole);
+  }, [liveServices]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem("aluminate-demo-conversations");
+      if (stored) setConversations(JSON.parse(stored) as Conversation[]);
+      const storedProfile = window.localStorage.getItem("aluminate-demo-profile");
+      if (storedProfile) setDemoUserProfile(JSON.parse(storedProfile) as AlumniProfile);
+    } catch {
+      // Keep the safe seed conversations when local storage is unavailable or invalid.
+    } finally {
+      setMessagesHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!messagesHydrated) return;
+    window.localStorage.setItem("aluminate-demo-profile", JSON.stringify(demoUserProfile));
+  }, [demoUserProfile, messagesHydrated]);
+
+  useEffect(() => {
+    if (!messagesHydrated) return;
+    window.localStorage.setItem("aluminate-demo-conversations", JSON.stringify(conversations));
+  }, [conversations, messagesHydrated]);
 
   useEffect(() => {
     if (!liveServices) {
@@ -157,7 +199,14 @@ export function AluminateApp() {
     };
   }, [liveServices, role]);
 
-  const visibleNav = navItems.filter((item) => !item.adminOnly || role === "admin");
+  const visibleNav = navItems
+    .filter((item) => !item.adminOnly || role === "admin")
+    .map((item) => {
+      if (item.key === "directory") return { ...item, count: String(alumni.length) };
+      if (item.key === "messages") return { ...item, count: String(conversations.reduce((total, chat) => total + chat.unread, 0)) };
+      if (item.key === "support") return { ...item, count: String(requests.filter((request) => !request.status.toLowerCase().includes("resolved")).length) };
+      return item;
+    });
   const cohorts = useMemo(() => Array.from(new Set(alumni.map((person) => person.cohort))).sort().reverse(), [alumni]);
   const filteredAlumni = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -256,6 +305,7 @@ export function AluminateApp() {
 
   async function loginAs(nextRole: UserRole) {
     if (!liveServices) {
+      window.sessionStorage.setItem("aluminate-demo-role", nextRole);
       setRole(nextRole);
       setActiveView("community");
       return;
@@ -284,6 +334,7 @@ export function AluminateApp() {
     event.preventDefault();
 
     if (!liveServices) {
+      window.sessionStorage.setItem("aluminate-demo-role", loginRole);
       setRole(loginRole);
       setActiveView("community");
       return;
@@ -321,6 +372,7 @@ export function AluminateApp() {
     }
     setRole(null);
     setLiveProfile(null);
+    window.sessionStorage.removeItem("aluminate-demo-role");
   }
 
   function changeView(view: ViewKey) {
@@ -339,8 +391,67 @@ export function AluminateApp() {
     setDraftProfile({ ...person });
   }
 
+  function selectConversation(id: string) {
+    setActiveConversationId(id);
+    setConversations((records) => records.map((item) => (item.id === id ? { ...item, unread: 0 } : item)));
+  }
+
+  function startConversation(person: AlumniProfile) {
+    if (person.canMessage === false) return;
+    const conversationId = `alumni-${person.id}`;
+    setConversations((records) => {
+      if (records.some((item) => item.id === conversationId)) return records;
+      return [
+        ...records,
+        {
+          id: conversationId,
+          participantId: person.id,
+          participantName: person.name,
+          participantDetail: `${person.industry} · ${person.business}`,
+          unread: 0,
+          messages: []
+        }
+      ];
+    });
+    setActiveConversationId(conversationId);
+    setMessageDraft("");
+    setActiveProfile(null);
+    changeView("messages");
+  }
+
+  function sendMessage() {
+    const body = messageDraft.trim();
+    if (!body || !activeConversationId) return;
+    setConversations((records) =>
+      records.map((conversation) =>
+        conversation.id === activeConversationId
+          ? {
+              ...conversation,
+              messages: [
+                ...conversation.messages,
+                {
+                  id: `message-${Date.now()}`,
+                  sender: "me",
+                  body,
+                  sentAt: "Just now"
+                }
+              ]
+            }
+          : conversation
+      )
+    );
+    setMessageDraft("");
+  }
+
   async function saveProfile() {
     if (!draftProfile) return;
+    if (draftProfile.id === demoUserProfile.id) {
+      setDemoUserProfile(draftProfile);
+      setLiveNote("Your preview profile was saved on this device.");
+      setActiveProfile(null);
+      setDraftProfile(null);
+      return;
+    }
     setAlumni((records) => records.map((person) => (person.id === draftProfile.id ? draftProfile : person)));
     if (liveProfile && draftProfile.id === liveProfile.id) {
       const updatedProfile = { ...liveProfile, ...draftProfile };
@@ -375,9 +486,9 @@ export function AluminateApp() {
 
     const newPost: CommunityPost = {
       id: `post-${Date.now()}`,
-      author: "Maya Chen",
-      cohort: "2023 alumni",
-      business: "digital media",
+      author: demoUserProfile.name,
+      cohort: `${demoUserProfile.cohort} alumni`,
+      business: demoUserProfile.business,
       timeAgo: "Just now",
       category: body.endsWith("?") ? "Community Ask" : "Update",
       tone: body.endsWith("?") ? "violet" : "green",
@@ -480,8 +591,15 @@ export function AluminateApp() {
           <LogoBlock large />
           <p className="eyebrow">Emerging Entrepreneurs Academy</p>
           <h1>Aluminate</h1>
-          <p className="login-copy">{liveNote}</p>
-          <form className="login-form" onSubmit={(event) => void loginWithEmailPassword(event)}>
+          <p className="login-copy">{firebaseEnabled ? liveNote : "Explore the alumni community without setting up an account."}</p>
+          {!firebaseEnabled && (
+            <div className="demo-entry">
+              <button className="primary-button" onClick={() => void loginAs("alumni")}>Explore as an alumnus</button>
+              <button className="secondary-button" onClick={() => void loginAs("admin")}>Preview admin tools</button>
+              <span>Demo changes stay on this device.</span>
+            </div>
+          )}
+          {firebaseEnabled && <form className="login-form" onSubmit={(event) => void loginWithEmailPassword(event)}>
             <div className="role-toggle" aria-label="Choose sign-in role">
               <button type="button" className={loginRole === "alumni" ? "active" : ""} onClick={() => setLoginRole("alumni")}>
                 Alumni
@@ -510,7 +628,7 @@ export function AluminateApp() {
             <button className="primary-button" type="submit">
               Sign In
             </button>
-          </form>
+          </form>}
           {firebaseEnabled && (
             <div className="login-actions compact">
               <button className="secondary-button" onClick={() => void loginAs(loginRole)}>
@@ -541,7 +659,7 @@ export function AluminateApp() {
         </nav>
 
         <section className="theme-card">
-          <p className="section-label">{firebaseEnabled ? "Phase 2 live" : "Phase 2 demo"}</p>
+          <p className="section-label">{firebaseEnabled ? "Connected account" : "Preview account"}</p>
           <div className="role-grid compact">
             <div>
               <strong>{role === "admin" ? "Admin" : "Alumni"}</strong>
@@ -559,7 +677,7 @@ export function AluminateApp() {
       <main className="main-panel">
         <header className="glass-panel topbar">
           <div>
-            <p className="eyebrow">Welcome back, {liveProfile?.name.split(" ")[0] || "Maya"}</p>
+            <p className="eyebrow">Welcome back, {liveProfile?.name.split(" ")[0] || "there"}</p>
             <h2>{viewTitles[activeView]}</h2>
           </div>
           <div className="top-actions">
@@ -595,7 +713,7 @@ export function AluminateApp() {
             >
               <UtilityIcon icon="settings" />
             </button>
-            <button className="primary-button" onClick={() => setComposerOpen(true)}>
+            <button className="primary-button" onClick={() => { setActiveView("community"); setComposerOpen(true); }}>
               <span className="button-icon">+</span>
               New Post
             </button>
@@ -686,6 +804,18 @@ export function AluminateApp() {
             onOpenProfile={openProfile}
           />
         )}
+        {activeView === "messages" && (
+          <MessagesView
+            alumni={alumni}
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            draft={messageDraft}
+            onSelectConversation={selectConversation}
+            onStartConversation={startConversation}
+            onDraft={setMessageDraft}
+            onSend={sendMessage}
+          />
+        )}
         {activeView === "learn" && <LearnView />}
         {activeView === "support" && (
           <SupportView
@@ -697,7 +827,7 @@ export function AluminateApp() {
             onCreateRequest={createSupportRequest}
           />
         )}
-        {activeView === "profile" && <ProfileView profile={liveProfile ?? alumni[0]} onEdit={openProfile} />}
+        {activeView === "profile" && <ProfileView profile={liveProfile ?? demoUserProfile} onEdit={openProfile} />}
         {activeView === "admin" && role === "admin" && (
           <AdminView
             alumniCount={alumni.length}
@@ -733,8 +863,11 @@ export function AluminateApp() {
           onChange={setDraftProfile}
           onClose={() => setActiveProfile(null)}
           onSave={saveProfile}
+          onMessage={startConversation}
+          editable={activeProfile.id === (liveProfile?.id ?? demoUserProfile.id)}
         />
       )}
+      <AskGaryView />
     </div>
   );
 }
@@ -797,6 +930,16 @@ function NavIcon({ icon }: { icon: ViewKey }) {
       <svg {...common}>
         <path d="M8 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0Z" />
         <path d="M4 21a8 8 0 0 1 16 0" />
+      </svg>
+    );
+  }
+
+  if (icon === "messages") {
+    return (
+      <svg {...common}>
+        <path d="M4 5h16v11H8l-4 4V5Z" />
+        <path d="M8 9h8" />
+        <path d="M8 12h5" />
       </svg>
     );
   }
@@ -1004,12 +1147,12 @@ function CommunityView({
 
         <section className="glass-panel rail-card">
           <p className="section-label">Mentor matches</p>
-          {["Sam Torres", "Nina Patel"].map((name, index) => (
+          {["Michelle Karanja", "Ston Nelson"].map((name, index) => (
             <div className="mentor" key={name}>
               <div className={index === 0 ? "avatar blue" : "avatar violet"}>{initials(name)}</div>
               <div>
                 <strong>{name}</strong>
-                <span>{index === 0 ? "Branding, websites, pricing" : "Finance, projections, grants"}</span>
+                <span>{index === 0 ? "Accounting, finance, peer mentorship" : "Leadership, real estate, mentoring"}</span>
               </div>
             </div>
           ))}
@@ -1059,6 +1202,14 @@ function DirectoryView({
 }) {
   return (
     <section>
+      <div className="glass-panel directory-intro">
+        <div>
+          <p className="section-label">Verified public roster</p>
+          <h3>{alumni.length} discoverable alumni profiles</h3>
+          <p>Only program participation and professional details confirmed by public sources are shown. Private contact information is intentionally omitted.</p>
+        </div>
+        <span className="verification-key"><i /> Publicly verified</span>
+      </div>
       <div className="glass-panel toolbar">
         <input
           aria-label="Search alumni"
@@ -1101,7 +1252,7 @@ function DirectoryView({
               </span>
               <span>
                 <strong>{person.name}</strong>
-                <small>{person.email}</small>
+                <small>{person.verifiedPublic ? "Publicly verified" : person.email || "Member profile"}</small>
               </span>
             </span>
             <span className="desktop-alumni-field">{person.cohort}</span>
@@ -1326,12 +1477,16 @@ function ProfileModal({
   draft,
   onChange,
   onClose,
-  onSave
+  onSave,
+  onMessage,
+  editable
 }: {
   draft: AlumniProfile;
   onChange: (profile: AlumniProfile) => void;
   onClose: () => void;
   onSave: () => void;
+  onMessage: (profile: AlumniProfile) => void;
+  editable: boolean;
 }) {
   return (
     <div className="modal-backdrop open" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -1350,26 +1505,42 @@ function ProfileModal({
           </div>
         </div>
 
-        <form className="profile-form">
-          {profileFields.map((field) => (
-            <label key={field} className={field === "business" || field === "skills" ? "wide" : ""}>
-              {field === "business" ? "Business / idea" : field}
-              {field === "skills" ? (
-                <textarea value={draft[field]} onChange={(event) => onChange({ ...draft, [field]: event.target.value })} />
-              ) : (
-                <input value={draft[field]} onChange={(event) => onChange({ ...draft, [field]: event.target.value })} />
-              )}
-            </label>
-          ))}
-        </form>
+        {editable ? (
+          <form className="profile-form">
+            {profileFields.map((field) => (
+              <label key={field} className={field === "business" || field === "skills" ? "wide" : ""}>
+                {field === "business" ? "Business / idea" : field}
+                {field === "skills" ? (
+                  <textarea value={draft[field]} onChange={(event) => onChange({ ...draft, [field]: event.target.value })} />
+                ) : (
+                  <input value={draft[field]} onChange={(event) => onChange({ ...draft, [field]: event.target.value })} />
+                )}
+              </label>
+            ))}
+          </form>
+        ) : (
+          <div className="public-profile-details">
+            <div><span>Industry</span><strong>{draft.industry}</strong></div>
+            <div><span>Location</span><strong>{draft.city}</strong></div>
+            <div><span>Business / experience</span><strong>{draft.business}</strong></div>
+            <div><span>Status</span><strong>{draft.status}</strong></div>
+            <div className="wide"><span>Skills & interests</span><strong>{draft.skills}</strong></div>
+            {draft.sourceUrl && (
+              <a className="profile-source" href={draft.sourceUrl} target="_blank" rel="noreferrer">
+                View {draft.sourceLabel ?? "public source"}
+              </a>
+            )}
+          </div>
+        )}
 
         <div className="modal-actions">
           <button className="secondary-button" onClick={onClose}>
-            Cancel
+            Close
           </button>
-          <button className="primary-button" onClick={onSave}>
-            Save Changes
-          </button>
+          {editable && <button className="primary-button" onClick={onSave}>Save Changes</button>}
+          {!editable && draft.canMessage !== false && (
+            <button className="primary-button" onClick={() => onMessage(draft)}>Message {draft.name.split(" ")[0]}</button>
+          )}
         </div>
       </section>
     </div>

@@ -46,9 +46,14 @@ Knowledge boundary:
 Voice and presence:
 - Speak in Gary's practical, encouraging mentor voice: experienced, plainspoken, optimistic, direct, and action-oriented.
 - Sound like a natural conversation with a trusted mentor, not a chatbot, researcher, or customer-support agent.
+- Respond to the specific situation or detail the person shared before offering advice. Do not simply restate their question.
+- Use contractions, varied sentence lengths, and natural transitions. Avoid stock openings, canned summaries, repetitive structures, and essay-like headings.
+- Carry useful details forward from earlier turns so the conversation feels continuous.
 - Never say "as an AI," discuss the knowledge system, list sources, add citations, or mention URLs.
 - Do not fabricate personal memories, private opinions, endorsements, or facts. Do not imply this is a live conversation with the real Gary.
-- Keep most answers to two to four short paragraphs. End with a useful question or concrete next step when natural.
+- Keep most answers conversational and concise—usually 80 to 180 words in two or three short paragraphs.
+- When the situation is underspecified, ask one focused question instead of filling the answer with assumptions.
+- End with one useful question or one concrete next step when it fits. Vary which one you use.
 - Do not provide definitive legal, medical, tax, or investment advice.`;
 
 let appCheckInitialized = false;
@@ -157,11 +162,25 @@ ${approvedUrls.join("\n")}
 Question: ${question.slice(0, 2000)}`;
 }
 
-export async function askGaryWithGemini(question: string, history: GaryHistoryMessage[]) {
+export async function askGaryWithGemini(
+  question: string,
+  history: GaryHistoryMessage[],
+  onUpdate?: (partialAnswer: string) => void
+) {
   const model = getGaryModel();
   const chat = model.startChat({ history: toFirebaseHistory(history) });
-  const result = await chat.sendMessage(buildQuestionPrompt(question));
-  const answer = result.response.text().trim();
+  const result = await chat.sendMessageStream(buildQuestionPrompt(question));
+  let streamedAnswer = "";
+
+  for await (const chunk of result.stream) {
+    const text = chunk.text();
+    if (!text) continue;
+    streamedAnswer += text;
+    onUpdate?.(streamedAnswer);
+  }
+
+  const answer = (await result.response).text().trim() || streamedAnswer.trim();
   if (!answer) throw new Error("Gemini returned an empty response.");
+  onUpdate?.(answer);
   return answer;
 }

@@ -59,8 +59,24 @@ const starterQuestions = [
 const welcome: ChatMessage = {
   id: "welcome",
   sender: "gary",
-  body: "Good to see you. Pull up a chair and tell me what you're working through. We'll sort it out and find a practical next step."
+  body: "Hi—what's on your mind? Tell me what's happening, and we'll think it through together."
 };
+
+function thinkingNote(question: string) {
+  const normalized = question.toLowerCase();
+  if (/team|lead|employee|people/.test(normalized)) return "Let me think about the people side of that…";
+  if (/idea|start|launch|customer/.test(normalized)) return "That's worth pressure-testing for a moment…";
+  if (/stuck|decision|choose|risk/.test(normalized)) return "Let me separate the signal from the noise…";
+  return "Give me a moment to think that through…";
+}
+
+function followUpPrompts(question: string) {
+  const normalized = question.toLowerCase();
+  if (/team|lead|employee|people/.test(normalized)) return ["What should I say to my team?", "Where should I start?"];
+  if (/brand|marketing|customer/.test(normalized)) return ["How do I test that with customers?", "What should I do this week?"];
+  if (/idea|start|launch/.test(normalized)) return ["Help me test the idea", "What's the biggest risk?"];
+  return ["Can you give me an example?", "What's my best next step?"];
+}
 
 function createAnswer(question: string): ChatMessage {
   const normalized = question.toLowerCase();
@@ -89,6 +105,9 @@ export function AskGaryView() {
   const [messages, setMessages] = useState<ChatMessage[]>([welcome]);
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [responding, setResponding] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [thinkingCopy, setThinkingCopy] = useState("Give me a moment to think that through…");
   const [speaking, setSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
@@ -97,14 +116,20 @@ export function AskGaryView() {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, thinking]);
 
-  const status = useMemo(() => (thinking ? "Thinking" : speaking ? "Speaking" : "Ready"), [speaking, thinking]);
+  const status = useMemo(
+    () => (thinking ? "Thinking it through" : responding ? "Replying" : speaking ? "Speaking" : "Here when you need me"),
+    [responding, speaking, thinking]
+  );
+  const lastUserQuestion = [...messages].reverse().find((message) => message.sender === "user")?.body;
 
   function readAnswer(body: string) {
     if (!voiceEnabled || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(body);
-    utterance.rate = 0.94;
-    utterance.pitch = 0.92;
+    const voices = window.speechSynthesis.getVoices();
+    utterance.voice = voices.find((voice) => /guy|david|google us english/i.test(voice.name)) ?? voices.find((voice) => voice.lang.startsWith("en")) ?? null;
+    utterance.rate = 0.96;
+    utterance.pitch = 0.9;
     utterance.onstart = () => setSpeaking(true);
     utterance.onend = () => setSpeaking(false);
     utterance.onerror = () => setSpeaking(false);
@@ -115,30 +140,48 @@ export function AskGaryView() {
     const cleanQuestion = question.trim();
     if (!cleanQuestion || thinking) return;
     const priorMessages = messages;
+    const responseId = `gary-${Date.now()}`;
+    let streamedBody = "";
     setMessages((current) => [...current, { id: `user-${Date.now()}`, sender: "user", body: cleanQuestion }]);
     setDraft("");
+    setThinkingCopy(thinkingNote(cleanQuestion));
     setThinking(true);
+    setResponding(false);
     try {
       const result = await askGaryWithGemini(
         cleanQuestion,
         priorMessages
           .filter((message) => message.id !== "welcome")
-          .map((message) => ({ role: message.sender === "gary" ? "model" as const : "user" as const, text: message.body }))
+          .map((message) => ({ role: message.sender === "gary" ? "model" as const : "user" as const, text: message.body })),
+        (partialAnswer) => {
+          streamedBody = partialAnswer;
+          setThinking(false);
+          setResponding(true);
+          setStreamingMessageId(responseId);
+          setMessages((current) => {
+            const exists = current.some((message) => message.id === responseId);
+            if (exists) {
+              return current.map((message) => message.id === responseId ? { ...message, body: partialAnswer } : message);
+            }
+            return [...current, { id: responseId, sender: "gary", body: partialAnswer }];
+          });
+        }
       );
-      const answer: ChatMessage = {
-        id: `gary-${Date.now()}`,
-        sender: "gary",
-        body: result
-      };
-      setMessages((current) => [...current, answer]);
-      readAnswer(answer.body);
+      if (!streamedBody) {
+        setMessages((current) => [...current, { id: responseId, sender: "gary", body: result }]);
+      }
+      readAnswer(result);
     } catch (error) {
       if (process.env.NODE_ENV === "development") console.error("Ask Gary Gemini request failed", error);
-      const answer = createAnswer(cleanQuestion);
-      setMessages((current) => [...current, answer]);
-      readAnswer(answer.body);
+      if (!streamedBody) {
+        const answer = createAnswer(cleanQuestion);
+        setMessages((current) => [...current, answer]);
+        readAnswer(answer.body);
+      }
     } finally {
       setThinking(false);
+      setResponding(false);
+      setStreamingMessageId(null);
     }
   }
 
@@ -152,6 +195,8 @@ export function AskGaryView() {
     setMessages([welcome]);
     setDraft("");
     setThinking(false);
+    setResponding(false);
+    setStreamingMessageId(null);
     setSpeaking(false);
   }
 
@@ -159,7 +204,7 @@ export function AskGaryView() {
     <aside className={open ? "gary-widget open" : "gary-widget"} aria-label="Ask Gary">
       {open && <section className="glass-panel gary-widget-panel" role="dialog" aria-modal="false" aria-labelledby="gary-widget-title">
         <header className="gary-widget-head">
-          <img src="/assets/gary-seibert.png" alt="" />
+          <img className={thinking || responding || speaking ? "active" : ""} src="/assets/gary-seibert.png" alt="" />
           <div>
             <h3 id="gary-widget-title">Ask Gary</h3>
             <span><i className={thinking || speaking ? "active" : ""} />{status}</span>
@@ -185,18 +230,21 @@ export function AskGaryView() {
 
         <div className="gary-messages" aria-live="polite">
           {messages.map((message) => (
-            <article className={`gary-message ${message.sender}`} key={message.id}>
+            <article className={`gary-message ${message.sender} ${message.id === streamingMessageId ? "streaming" : ""}`} key={message.id}>
               {message.sender === "gary" && <img src="/assets/gary-seibert.png" alt="" />}
               <div>
-                <span className="gary-message-name">{message.sender === "gary" ? "Ask Gary" : "You"}</span>
-                <p>{message.body}</p>
+                <span className="gary-message-name">{message.sender === "gary" ? "Gary" : "You"}</span>
+                {message.body.split(/\n{2,}/).map((paragraph, index) => <p key={`${message.id}-${index}`}>{paragraph}</p>)}
               </div>
             </article>
           ))}
           {thinking && (
             <article className="gary-message gary">
               <img src="/assets/gary-seibert.png" alt="" />
-              <div className="gary-typing" aria-label="Gary is preparing an answer"><i /><i /><i /></div>
+              <div className="gary-thinking">
+                <div className="gary-typing" aria-label="Gary is preparing an answer"><i /><i /><i /></div>
+                <span>{thinkingCopy}</span>
+              </div>
             </article>
           )}
           <div ref={messageEndRef} />
@@ -205,6 +253,14 @@ export function AskGaryView() {
         {messages.length === 1 && (
           <div className="gary-starters" aria-label="Suggested questions">
             {starterQuestions.map((question) => (
+              <button key={question} onClick={() => void ask(question)}>{question}</button>
+            ))}
+          </div>
+        )}
+
+        {!thinking && !responding && messages.length > 2 && lastUserQuestion && (
+          <div className="gary-followups" aria-label="Continue the conversation">
+            {followUpPrompts(lastUserQuestion).map((question) => (
               <button key={question} onClick={() => void ask(question)}>{question}</button>
             ))}
           </div>
@@ -234,7 +290,7 @@ export function AskGaryView() {
       </section>}
 
       <button
-        className={`gary-floating-head ${speaking ? "is-speaking" : ""} ${thinking ? "is-thinking" : ""}`}
+        className={`gary-floating-head ${speaking || responding ? "is-speaking" : ""} ${thinking ? "is-thinking" : ""}`}
         onClick={() => setOpen((current) => !current)}
         aria-expanded={open}
         aria-label={open ? "Close Ask Gary" : "Open Ask Gary"}

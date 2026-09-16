@@ -3,6 +3,8 @@ node_modules
 node_modules_partial_*
 dist
 coverage
+.firebase-cli-cache/
+*.tsbuildinfo
 .env
 .env*.local
 npm-debug.log*

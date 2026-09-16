@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { askGaryWithGemini } from "@/lib/ask-gary-ai";
 
 type Source = {
   title: string;
@@ -118,27 +119,21 @@ export function AskGaryView() {
     setDraft("");
     setThinking(true);
     try {
-      const response = await fetch("/api/ask-gary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: cleanQuestion,
-          history: priorMessages
-            .filter((message) => message.id !== "welcome")
-            .map((message) => ({ role: message.sender === "gary" ? "assistant" : "user", content: message.body }))
-        })
-      });
-      if (!response.ok) throw new Error(String(response.status));
-
-      const result = (await response.json()) as { answer: string };
+      const result = await askGaryWithGemini(
+        cleanQuestion,
+        priorMessages
+          .filter((message) => message.id !== "welcome")
+          .map((message) => ({ role: message.sender === "gary" ? "model" as const : "user" as const, text: message.body }))
+      );
       const answer: ChatMessage = {
         id: `gary-${Date.now()}`,
         sender: "gary",
-        body: result.answer
+        body: result
       };
       setMessages((current) => [...current, answer]);
       readAnswer(answer.body);
-    } catch {
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") console.error("Ask Gary Gemini request failed", error);
       const answer = createAnswer(cleanQuestion);
       setMessages((current) => [...current, answer]);
       readAnswer(answer.body);

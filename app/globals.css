@@ -136,6 +136,13 @@ button {
   outline: none;
 }
 
+.demo-login-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .role-toggle {
   display: grid;
   grid-template-columns: 1fr 1fr;

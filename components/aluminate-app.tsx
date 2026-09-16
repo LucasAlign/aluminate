@@ -17,6 +17,7 @@ import {
   type LiveUserProfile
 } from "@/lib/firebase-data";
 import { parseRosterFile } from "@/lib/importers";
+import { DEMO_LOGIN, isDemoLogin } from "@/lib/demo-auth";
 import {
   alumniSeed,
   communityPosts,
@@ -77,8 +78,8 @@ export function AluminateApp() {
   const [liveNote, setLiveNote] = useState(
     firebaseEnabled ? "Your organization workspace is connected." : "Preview mode: changes are saved only on this device."
   );
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginEmail, setLoginEmail] = useState<string>(DEMO_LOGIN.email);
+  const [loginPassword, setLoginPassword] = useState<string>(DEMO_LOGIN.password);
   const [loginRole, setLoginRole] = useState<UserRole>("alumni");
   const [activeView, setActiveView] = useState<ViewKey>("community");
   const [alumni, setAlumni] = useState(alumniSeed);
@@ -182,7 +183,7 @@ export function AluminateApp() {
   }, [liveServices]);
 
   useEffect(() => {
-    if (!liveServices || !role) return;
+    if (!liveServices || !liveProfile) return;
 
     const stopPosts = watchPosts(
       (livePosts) => setPosts(livePosts),
@@ -197,7 +198,7 @@ export function AluminateApp() {
       stopPosts?.();
       stopRequests?.();
     };
-  }, [liveServices, role]);
+  }, [liveProfile, liveServices]);
 
   const visibleNav = navItems
     .filter((item) => !item.adminOnly || role === "admin")
@@ -332,6 +333,15 @@ export function AluminateApp() {
 
   async function loginWithEmailPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isDemoLogin(loginEmail, loginPassword)) {
+      window.sessionStorage.setItem("aluminate-demo-role", loginRole);
+      setLiveProfile(null);
+      setRole(loginRole);
+      setActiveView("community");
+      setLiveNote("Demo mode: changes stay on this device.");
+      return;
+    }
 
     if (!liveServices) {
       window.sessionStorage.setItem("aluminate-demo-role", loginRole);
@@ -628,6 +638,7 @@ export function AluminateApp() {
             <button className="primary-button" type="submit">
               Sign In
             </button>
+            <span className="demo-login-note">Demo credentials are prefilled. Choose a role and sign in.</span>
           </form>}
           {firebaseEnabled && (
             <div className="login-actions compact">
@@ -659,7 +670,7 @@ export function AluminateApp() {
         </nav>
 
         <section className="theme-card">
-          <p className="section-label">{firebaseEnabled ? "Connected account" : "Preview account"}</p>
+          <p className="section-label">{liveProfile ? "Connected account" : "Preview account"}</p>
           <div className="role-grid compact">
             <div>
               <strong>{role === "admin" ? "Admin" : "Alumni"}</strong>
@@ -677,7 +688,7 @@ export function AluminateApp() {
       <main className="main-panel">
         <header className="glass-panel topbar">
           <div>
-            <p className="eyebrow">Welcome back, {liveProfile?.name.split(" ")[0] || "there"}</p>
+            <p className="eyebrow">Welcome back, {liveProfile?.name.split(" ")[0] || demoUserProfile.name.split(" ")[0]}</p>
             <h2>{viewTitles[activeView]}</h2>
           </div>
           <div className="top-actions">

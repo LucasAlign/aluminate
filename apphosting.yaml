@@ -1,0 +1,45 @@
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyDm7wVRbUHgkaxfyxm2FIxUqdsQoHZtfj4
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: aluminate-b83ce.firebaseapp.com
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: aluminate-b83ce
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:203756133147:web:345c3f06908779b2b211be
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: aluminate-b83ce.firebasestorage.app
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "203756133147"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    value: G-RZZPRRGE7E
+    availability: [BUILD, RUNTIME]
+
+  # Ask Gary runs through a separate Spark project so Gemini uses its free tier.
+  - variable: NEXT_PUBLIC_ASK_GARY_FIREBASE_API_KEY
+    value: AIzaSyBUz51ZcjZ8ZA_rGZfzwIC5gLJO_KImJFo
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_ASK_GARY_FIREBASE_AUTH_DOMAIN
+    value: aluminate-ask-gary-203756.firebaseapp.com
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_ASK_GARY_FIREBASE_PROJECT_ID
+    value: aluminate-ask-gary-203756
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_ASK_GARY_FIREBASE_APP_ID
+    value: 1:116373343805:web:4de130f61bae31d52d6454
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_ASK_GARY_FIREBASE_STORAGE_BUCKET
+    value: aluminate-ask-gary-203756.firebasestorage.app
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_ASK_GARY_FIREBASE_MESSAGING_SENDER_ID
+    value: "116373343805"
+    availability: [BUILD, RUNTIME]
+  - variable: NEXT_PUBLIC_ASK_GARY_RECAPTCHA_ENTERPRISE_SITE_KEY
+    value: 6LfdnL0tAAAAAD0dlA0bC3aJOfLu1E2l-BSxkloL
+    availability: [BUILD, RUNTIME]

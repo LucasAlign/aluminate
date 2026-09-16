@@ -1,8 +1,8 @@
 "use client";
 
-import { getAI, getGenerativeModel, GoogleAIBackend, type Content, type GenerativeModel } from "firebase/ai";
+import { getAI, getGenerativeModel, GoogleAIBackend, ThinkingLevel, type Content, type GenerativeModel } from "firebase/ai";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
-import { getFirebaseApp } from "@/lib/firebase";
+import { getApps, initializeApp, type FirebaseOptions } from "firebase/app";
 import garyArticles from "@/lib/gary-articles.generated.json";
 
 type GaryHistoryMessage = {
@@ -10,8 +10,17 @@ type GaryHistoryMessage = {
   text: string;
 };
 
-const RECAPTCHA_ENTERPRISE_SITE_KEY =
-  process.env.NEXT_PUBLIC_RECAPTCHA_ENTERPRISE_SITE_KEY || "6Ldv0rwtAAAAAB3V6zPK6ZesdMtEogfe4XnuWN5b";
+const ASK_GARY_FIREBASE_APP_NAME = "ask-gary-ai";
+const ASK_GARY_FIREBASE_CONFIG: FirebaseOptions = {
+  apiKey: process.env.NEXT_PUBLIC_ASK_GARY_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_ASK_GARY_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_ASK_GARY_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_ASK_GARY_FIREBASE_APP_ID,
+  storageBucket: process.env.NEXT_PUBLIC_ASK_GARY_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_ASK_GARY_FIREBASE_MESSAGING_SENDER_ID
+};
+
+const RECAPTCHA_ENTERPRISE_SITE_KEY = process.env.NEXT_PUBLIC_ASK_GARY_RECAPTCHA_ENTERPRISE_SITE_KEY;
 
 const CORE_CONTEXT_URLS = [
   "https://www.422business.com/member/gary-seibert",
@@ -20,7 +29,7 @@ const CORE_CONTEXT_URLS = [
   "https://www.sbrassociation.com/"
 ] as const;
 
-const ROUTED_ARTICLE_COUNT = 16;
+const ROUTED_ARTICLE_COUNT = 8;
 const STOP_WORDS = new Set([
   "about", "after", "again", "also", "because", "been", "before", "being", "business", "could", "does",
   "from", "gary", "have", "into", "just", "more", "most", "should", "some", "that", "their", "them", "then",
@@ -45,6 +54,22 @@ Voice and presence:
 let appCheckInitialized = false;
 let modelInstance: GenerativeModel | null = null;
 
+function getAskGaryFirebaseApp() {
+  const existingApp = getApps().find((app) => app.name === ASK_GARY_FIREBASE_APP_NAME);
+  if (existingApp) return existingApp;
+
+  if (
+    !ASK_GARY_FIREBASE_CONFIG.apiKey ||
+    !ASK_GARY_FIREBASE_CONFIG.authDomain ||
+    !ASK_GARY_FIREBASE_CONFIG.projectId ||
+    !ASK_GARY_FIREBASE_CONFIG.appId
+  ) {
+    return null;
+  }
+
+  return initializeApp(ASK_GARY_FIREBASE_CONFIG, ASK_GARY_FIREBASE_APP_NAME);
+}
+
 function enableLocalDebugToken() {
   if (process.env.NODE_ENV !== "development" || typeof window === "undefined") return;
   const debugGlobal = globalThis as typeof globalThis & {
@@ -56,8 +81,9 @@ function enableLocalDebugToken() {
 function getGaryModel() {
   if (modelInstance) return modelInstance;
 
-  const app = getFirebaseApp();
+  const app = getAskGaryFirebaseApp();
   if (!app) throw new Error("Firebase is not configured for this deployment.");
+  if (!RECAPTCHA_ENTERPRISE_SITE_KEY) throw new Error("Ask Gary App Check is not configured for this deployment.");
 
   enableLocalDebugToken();
   if (!appCheckInitialized) {
@@ -80,9 +106,12 @@ function getGaryModel() {
     tools: [{ urlContext: {} }],
     generationConfig: {
       candidateCount: 1,
-      maxOutputTokens: 700,
+      maxOutputTokens: 1200,
       temperature: 0.65,
-      topP: 0.9
+      topP: 0.9,
+      thinkingConfig: {
+        thinkingLevel: ThinkingLevel.LOW
+      }
     }
   });
   return modelInstance;

@@ -6,14 +6,22 @@ export type GaryArticle = {
 };
 
 const STOP_WORDS = new Set([
-  "about", "after", "again", "also", "and", "because", "been", "before", "being", "business", "can", "could", "does",
-  "from", "gary", "have", "into", "just", "more", "most", "should", "some", "that", "their", "them", "then",
+  "about", "after", "again", "also", "and", "because", "been", "before", "being", "business", "but", "can", "could", "does",
+  "feels", "from", "gary", "have", "into", "just", "keep", "more", "most", "service", "should", "some", "that", "their", "them", "then",
   "the", "there", "these", "they", "this", "through", "what", "when", "where", "which", "with", "would", "your",
-  "how", "my"
+  "how", "my", "until", "week"
 ]);
 
+const CONCEPT_EXPANSIONS: Array<[RegExp, string[]]> = [
+  [/\b(idea|start|launch|perfect|waiting|stuck)\b/i, ["entrepreneur", "mindset", "action", "customer", "test"]],
+  [/\b(brand|marketing|customer|value proposition)\b/i, ["trust", "value", "promise", "differentiate"]],
+  [/\b(lead|leader|team|delegate|employee)\b/i, ["leadership", "communication", "responsibility", "expectations"]],
+  [/\b(price|pricing|charge|margin)\b/i, ["cost", "profit", "customer", "value"]],
+  [/\b(network|referral|relationship)\b/i, ["networking", "connect", "help", "follow"]]
+];
+
 export function searchableWords(value: string) {
-  return Array.from(
+  const words = Array.from(
     new Set(
       value
         .toLowerCase()
@@ -21,6 +29,10 @@ export function searchableWords(value: string) {
         ?.filter((word) => word.length >= 3 && !STOP_WORDS.has(word)) ?? []
     )
   );
+  for (const [pattern, additions] of CONCEPT_EXPANSIONS) {
+    if (pattern.test(value)) words.push(...additions);
+  }
+  return Array.from(new Set(words));
 }
 
 function occurrenceCount(haystack: string, needle: string) {

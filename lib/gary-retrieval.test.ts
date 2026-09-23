@@ -9,7 +9,10 @@ const articles: GaryArticle[] = [
 ];
 
 test("searchableWords removes filler words and duplicates", () => {
-  assert.deepEqual(searchableWords("What should Gary do about the team and team?"), ["team"]);
+  const words = searchableWords("What should Gary do about the team and team?");
+  assert.equal(words.filter((word) => word === "team").length, 1);
+  assert.ok(!words.includes("what"));
+  assert.ok(!words.includes("gary"));
 });
 
 test("selectGaryArticles ranks relevant writing ahead of newer unrelated writing", () => {
@@ -23,3 +26,9 @@ test("selectGaryArticles carries recent conversation context into retrieval", ()
   assert.equal(selected[0].date, "2026-01");
 });
 
+test("searchableWords expands common business situations into Gary concepts", () => {
+  const words = searchableWords("My idea is stuck because I am waiting for perfect");
+  assert.ok(words.includes("mindset"));
+  assert.ok(words.includes("action"));
+  assert.ok(words.includes("customer"));
+});

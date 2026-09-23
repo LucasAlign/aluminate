@@ -43,3 +43,9 @@ env:
   - variable: NEXT_PUBLIC_ASK_GARY_RECAPTCHA_ENTERPRISE_SITE_KEY
     value: 6LfdnL0tAAAAAD0dlA0bC3aJOfLu1E2l-BSxkloL
     availability: [BUILD, RUNTIME]
+  - variable: GROQ_API_KEY
+    secret: groqApiKey
+    availability: [RUNTIME]
+  - variable: GROQ_MODEL
+    value: openai/gpt-oss-120b
+    availability: [RUNTIME]

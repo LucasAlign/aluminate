@@ -1,54 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { askGaryWithGemini } from "@/lib/ask-gary-ai";
-
-type Source = {
-  title: string;
-  year?: string;
-  url: string;
-  topics: string[];
-};
+import { askGary } from "@/lib/ask-gary-client";
 
 type ChatMessage = {
   id: string;
   sender: "gary" | "user";
   body: string;
-  sources?: Source[];
 };
-
-const sources: Source[] = [
-  {
-    title: "Do You Have an Entrepreneurial MINDSET?",
-    year: "2025",
-    url: "https://422business.com/sites/default/files/Rt422BA_06-25-SBRA.pdf",
-    topics: ["mindset", "start", "idea", "confidence", "entrepreneur"]
-  },
-  {
-    title: "BRANDING is KING",
-    year: "2025",
-    url: "https://422business.com/sites/default/files/Rt422BA_05-25-SBRA.pdf",
-    topics: ["brand", "branding", "marketing", "customer", "trust"]
-  },
-  {
-    title: "Should You KNOW What You Don't KNOW?",
-    year: "2021",
-    url: "https://422business.com/sites/default/files/Rt422BA_Oct2021_SBRA.pdf",
-    topics: ["decision", "knowledge", "problem", "procrastination", "stuck"]
-  },
-  {
-    title: "Lead Like a GOOSE",
-    year: "2020",
-    url: "https://422business.com/groups/route-422-business-advisor",
-    topics: ["lead", "leadership", "team", "delegate", "responsibility"]
-  },
-  {
-    title: "A Few Take Homes After 50 Years in Business",
-    year: "2019",
-    url: "https://422business.com/groups/route-422-business-advisor",
-    topics: ["experience", "failure", "future", "boss", "business"]
-  }
-];
 
 const starterQuestions = [
   "How do I know if my idea is worth pursuing?",
@@ -76,28 +35,6 @@ function followUpPrompts(question: string) {
   if (/brand|marketing|customer/.test(normalized)) return ["How do I test that with customers?", "What should I do this week?"];
   if (/idea|start|launch/.test(normalized)) return ["Help me test the idea", "What's the biggest risk?"];
   return ["Can you give me an example?", "What's my best next step?"];
-}
-
-function createAnswer(question: string): ChatMessage {
-  const normalized = question.toLowerCase();
-  const ranked = sources
-    .map((source) => ({ source, score: source.topics.filter((topic) => normalized.includes(topic)).length }))
-    .sort((a, b) => b.score - a.score);
-  const selected = ranked[0].score > 0 ? ranked.slice(0, 2).map(({ source }) => source) : [sources[0], sources[4]];
-
-  let body = "Here's how I'd look at it: get the question out of your head and into the real world. Talk with the people affected, test one small assumption, and let what you learn shape the next move. Progress comes from informed action—not waiting for perfect certainty.";
-
-  if (/brand|marketing|customer|trust/.test(normalized)) {
-    body = "A brand is not simply a logo; it's the promise people expect you to keep. Start by getting very clear about who you serve, the problem you solve, and the experience you deliver every time. Consistency earns recognition, and recognition—paired with good work—earns trust.";
-  } else if (/lead|team|delegate|employee|people/.test(normalized)) {
-    body = "Leadership is shared responsibility. Set a clear direction, give people room to contribute, and make it safe for them to tell you what you may be missing. Like geese in formation, strong teams take turns carrying the load and encourage one another along the way.";
-  } else if (/idea|start|mindset|entrepreneur|confidence/.test(normalized)) {
-    body = "An entrepreneurial mindset begins with noticing a problem and taking responsibility for learning how to solve it. Ask better questions, speak with potential customers, and test the smallest useful version of your idea. Confidence usually follows action; it rarely arrives before it.";
-  } else if (/stuck|decision|procrast|problem|know/.test(normalized)) {
-    body = "First, name what you don't know. Then decide which missing fact truly changes the decision and go get that fact. Problems seldom improve through delay. Give yourself a short deadline, choose the best responsible next step, and adjust as new information arrives.";
-  }
-
-  return { id: `gary-${Date.now()}`, sender: "gary", body, sources: selected };
 }
 
 export function AskGaryView() {
@@ -148,11 +85,11 @@ export function AskGaryView() {
     setThinking(true);
     setResponding(false);
     try {
-      const result = await askGaryWithGemini(
+      const result = await askGary(
         cleanQuestion,
         priorMessages
           .filter((message) => message.id !== "welcome")
-          .map((message) => ({ role: message.sender === "gary" ? "model" as const : "user" as const, text: message.body })),
+          .map((message) => ({ role: message.sender === "gary" ? "assistant" as const : "user" as const, content: message.body })),
         (partialAnswer) => {
           streamedBody = partialAnswer;
           setThinking(false);
@@ -172,11 +109,10 @@ export function AskGaryView() {
       }
       readAnswer(result);
     } catch (error) {
-      if (process.env.NODE_ENV === "development") console.error("Ask Gary Gemini request failed", error);
+      if (process.env.NODE_ENV === "development") console.error("Ask Gary request failed", error);
       if (!streamedBody) {
-        const answer = createAnswer(cleanQuestion);
-        setMessages((current) => [...current, answer]);
-        readAnswer(answer.body);
+        const body = error instanceof Error ? error.message : "I'm having trouble connecting right now. Please try again in a moment.";
+        setMessages((current) => [...current, { id: responseId, sender: "gary", body }]);
       }
     } finally {
       setThinking(false);

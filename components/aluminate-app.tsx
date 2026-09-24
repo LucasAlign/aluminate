@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { MessagesView } from "@/components/messages-view";
 import { AskGaryView } from "@/components/ask-gary-view";
+import { StudentPortalView } from "@/components/student-portal-view";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   createLivePost,
@@ -63,6 +64,7 @@ const navItems: Array<{ key: ViewKey; label: string; count: string; icon: ViewKe
   { key: "directory", label: "Directory", count: "16", icon: "directory" },
   { key: "messages", label: "Messages", count: "1", icon: "messages" },
   { key: "learn", label: "Learn", count: "3", icon: "learn" },
+  { key: "student-portal", label: "Student Portal", count: "", icon: "student-portal" },
   { key: "support", label: "Support", count: "3", icon: "support" },
   { key: "profile", label: "Profile", count: "You", icon: "profile" },
   { key: "admin", label: "Admin", count: "Live", icon: "admin", adminOnly: true }
@@ -828,6 +830,7 @@ export function AluminateApp() {
           />
         )}
         {activeView === "learn" && <LearnView />}
+        {activeView === "student-portal" && <StudentPortalView />}
         {activeView === "support" && (
           <SupportView
             requests={requests}
@@ -908,7 +911,7 @@ function NavButton({
         </span>
         {item.label}
       </span>
-      <strong>{item.count}</strong>
+      {item.count && <strong>{item.count}</strong>}
     </button>
   );
 }
@@ -961,6 +964,16 @@ function NavIcon({ icon }: { icon: ViewKey }) {
         <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
         <path d="M8 7h8" />
         <path d="M8 11h6" />
+      </svg>
+    );
+  }
+
+  if (icon === "student-portal") {
+    return (
+      <svg {...common}>
+        <path d="m2 9 10-5 10 5-10 5-10-5Z" />
+        <path d="M6 11v6c4 3 8 3 12 0v-6" />
+        <path d="M22 9v7" />
       </svg>
     );
   }

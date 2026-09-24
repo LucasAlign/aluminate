@@ -361,6 +361,7 @@ export const viewTitles = {
   directory: "Alumni Directory",
   messages: "Messages",
   learn: "Learning Hub",
+  "student-portal": "Student Portal",
   support: "Support Center",
   profile: "My Profile",
   admin: "Admin Portal"

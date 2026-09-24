@@ -1,6 +1,6 @@
 export type UserRole = "alumni" | "admin";
 
-export type ViewKey = "community" | "directory" | "messages" | "learn" | "support" | "profile" | "admin";
+export type ViewKey = "community" | "directory" | "messages" | "learn" | "student-portal" | "support" | "profile" | "admin";
 
 export type AlumniProfile = {
   id: string;
